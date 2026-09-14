@@ -229,12 +229,25 @@ const updatePreferences = async (
   }
 };
 
-const deletePreferences = async (ids: string[]) => {
+const deletePreferences = async (ids: string | string[]) => {
   try {
-    if (!ids?.length) {
+    if (!ids || !ids.length) {
       return {
         status: CONSTANT.HTTP_STATUS.BAD_REQUEST,
         message: "Brand IDs are required",
+      };
+    }
+
+    if (typeof ids === "string") {
+      const preference = await PreferencesModel.findOneAndUpdate(
+        { preference_id: ids, is_deleted: false },
+        { is_deleted: true },
+        { new: true },
+      );
+
+      return preference ?? {
+        status: CONSTANT.HTTP_STATUS.NOT_FOUND,
+        message: CONSTANT.STATUS.NOT_FOUND,
       };
     }
 
