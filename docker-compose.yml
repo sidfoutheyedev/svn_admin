@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      mongo:
+        condition: service_healthy
+  # Inventory writes use multi-document MongoDB transactions
+  # (stock update + ledger insert must commit/rollback together), which
+  # require a replica set — a plain standalone mongod cannot run them.
+  # This runs a single-node replica set and initiates it on first boot.
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "
+          try {
+            rs.status().ok
+          } catch (e) {
+            rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'mongo:27017' }] }).ok
+          }
+        "
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
