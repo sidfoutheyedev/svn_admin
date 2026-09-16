@@ -8,7 +8,7 @@ import type {
   RangeQuery,
 } from "../../packages/utils";
 import ProductServices from "./product.services";
-import { buildSampleProductsCsv, buildProductsCsvExport } from "./product.csv";
+import { buildSampleProductsCsv, buildProductsCsvExport,bulkproductrecommedation } from "./product.csv";
 import {
   ApiResponse,
   ProductBulkIdsRequest,
@@ -608,6 +608,32 @@ const getallProductByCSVcontroller = async (
   }
 };
 
+const getallProductRecommendationcontroller = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+
+    const csv = await bulkproductrecommedation()
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="products-recommendation-export.csv"',
+    );
+    return res.status(CONSTANT.HTTP_STATUS.OK).send(csv);
+
+  } catch (error) {
+    return errorHandler(
+      {
+        status: CONSTANT.HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message:
+          error instanceof Error
+            ? error.message
+            : CONSTANT.STATUS.SOMETHING_WENT_WRONG,
+      },
+      req,
+      res,
+    );
+  }
+}
+
 export {
   createProductcontroller,
   updateProductcontroller,
@@ -624,4 +650,5 @@ export {
   sampleProductCSVcontroller,
   createProductByCSVcontroller,
   getallProductByCSVcontroller,
+  getallProductRecommendationcontroller
 };

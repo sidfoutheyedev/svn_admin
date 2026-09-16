@@ -3,6 +3,8 @@ import { stringify } from "csv-stringify/sync";
 import { productModel } from "../models/product.model";
 import { productVariantModel } from "../models/product_varient.model";
 import { SKUModel } from "../models/product_sku.model";
+import { CategoryModel } from "../models/category.model";
+import { BrandModel } from "../models/brand.model";
 import type { ProductCreateRequest, ProductVariantInput } from "./product.type";
 
 export const CSV_COLUMNS = [
@@ -34,9 +36,9 @@ export const CSV_COLUMNS = [
 const toList = (value: string | undefined): string[] =>
     value
         ? value
-              .split("|")
-              .map((v) => v.trim())
-              .filter(Boolean)
+            .split("|")
+            .map((v) => v.trim())
+            .filter(Boolean)
         : [];
 
 const toOptionalNumber = (value: string | undefined): number | undefined =>
@@ -312,4 +314,81 @@ export const buildProductsCsvExport = async (): Promise<string> => {
     }
 
     return stringify([[...CSV_COLUMNS], ...rows]);
+};
+
+// create an CSV for Product to given
+
+
+const RECOMMEDATION_TABLE = [
+    "product_id",
+    "title",
+    "brand",
+    "gender",
+    "category",
+    "subcategory",
+    "style",
+    "price",
+    "in_stock",
+    "is_active",
+    "primary_image",
+    "embedding_text",
+] as const;
+
+export const bulkproductrecommedation = async (): Promise<string> => {
+    const products = await productModel.find({ is_deleted: false }).lean();
+
+    const brandIds = [...new Set(products.map((p) => p.brand_id))];
+    const categoryIds = [...new Set(products.flatMap((p) => [p.category, p.sub_category]))];
+    const productIds = products.map((p) => p.product_id);
+
+    const [brands, categories, defaultVariants] = await Promise.all([
+        brandIds.length ? BrandModel.find({ brand_id: { $in: brandIds } }).lean() : [],
+        categoryIds.length ? CategoryModel.find({ category_id: { $in: categoryIds } }).lean() : [],
+        productIds.length
+            ? productVariantModel.find({ product_id: { $in: productIds }, is_default: true }).lean()
+            : [],
+    ]);
+
+    const brandNameById = new Map(brands.map((b) => [b.brand_id, b.brand_name]));
+    const categoryNameById = new Map(categories.map((c) => [c.category_id, c.category_name]));
+    const defaultVariantByProduct = new Map(defaultVariants.map((v) => [v.product_id, v]));
+
+    const rows: string[][] = [];
+    for (const product of products) {
+        const defaultVariant = defaultVariantByProduct.get(product.product_id);
+        if (!defaultVariant) continue;
+
+        const brandName = brandNameById.get(product.brand_id) ?? "";
+        const categoryName = categoryNameById.get(product.category) ?? "";
+        const subCategoryName = categoryNameById.get(product.sub_category) ?? "";
+        // No dedicated style attribute exists yet — style mirrors category until one is introduced.
+        const style = categoryName;
+        const primaryImage = defaultVariant.product_images?.[0] ?? "";
+
+        const embeddingText = [
+            product.product_name,
+            [subCategoryName, ...(defaultVariant.variant_combination ?? []), ...(product.tag ?? []), brandName]
+                .filter(Boolean)
+                .join(", "),
+        ]
+            .filter(Boolean)
+            .join(". ");
+
+        rows.push([
+            product.product_id,
+            product.product_name,
+            brandName,
+            product.gender,
+            categoryName,
+            subCategoryName,
+            style,
+            String(defaultVariant.price),
+            String(defaultVariant.stock_on_hand > 0),
+            String(defaultVariant.is_active),
+            primaryImage,
+            embeddingText,
+        ]);
+    }
+
+    return stringify([[...RECOMMEDATION_TABLE], ...rows]);
 };

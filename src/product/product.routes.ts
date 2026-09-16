@@ -15,6 +15,7 @@ import {
   sampleProductCSVcontroller,
   createProductByCSVcontroller,
   getallProductByCSVcontroller,
+  getallProductRecommendationcontroller
 } from "./product.controller";
 import { requireAuth } from "../middlewares/auth.middleware";
 import { validateBody } from "../middlewares/validate.middleware";
@@ -96,5 +97,5 @@ router.post(
 router.get("/csv/sample", requireAuth, sampleProductCSVcontroller);
 router.post("/csv", requireAuth, uploadCsvSingle("file"), createProductByCSVcontroller);
 router.get("/csv", requireAuth, getallProductByCSVcontroller);
-
+router.get("/recommendation/csv", getallProductRecommendationcontroller)
 export default router;

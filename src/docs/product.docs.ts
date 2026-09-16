@@ -809,3 +809,23 @@
  *             schema: { type: string }
  *       401: { description: Unauthorized }
  */
+
+/**
+ * @swagger
+ * /v1/products/recommendation/csv:
+ *   get:
+ *     summary: Export a recommendation/embedding feed as a CSV file — one row per non-deleted product, sourced from that product's is_default variant. Public endpoint, no auth required.
+ *     tags: [Products]
+ *     responses:
+ *       200:
+ *         description: >
+ *           A CSV file (products-recommendation-export.csv, Content-Disposition attachment) with columns
+ *           product_id, title, brand, gender, category, subcategory, style, price, in_stock, is_active, primary_image, embedding_text.
+ *           One row per product; a product with no is_default variant contributes no row.
+ *           brand/category/subcategory are resolved from ids to names. style currently mirrors category (no dedicated style attribute exists yet).
+ *           price/in_stock/is_active/primary_image come from the product's is_default variant (primary_image is the first entry of that variant's product_images).
+ *           embedding_text is "{title}. {subcategory}, {variant_combination values}, {tags}, {brand}", skipping empty pieces.
+ *         content:
+ *           text/csv:
+ *             schema: { type: string }
+ */
