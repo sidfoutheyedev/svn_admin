@@ -143,22 +143,22 @@ describe('updatePaymentsStatus', () => {
 });
 
 describe('deletePayment', () => {
-  it('reads payment_id from the query string, not params', async () => {
+  it('forwards req.body.ids to the service', async () => {
     (paymentService.deletePayment as jest.Mock).mockResolvedValue(record);
 
-    const req: any = { query: { payment_id: 'payment-1' }, params: {} };
+    const req: any = { query: {}, params: {}, body: { ids: ['payment-1'] } };
     const res = mockRes();
 
     await deletePayment(req, res, jest.fn());
 
-    expect(paymentService.deletePayment).toHaveBeenCalledWith('payment-1');
+    expect(paymentService.deletePayment).toHaveBeenCalledWith(['payment-1']);
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
-  it('returns 404 when the payment_id in the query does not exist', async () => {
+  it('returns 404 when the payment_id in the body does not exist', async () => {
     (paymentService.deletePayment as jest.Mock).mockResolvedValue({ status: 404, message: 'Not Found' });
 
-    const req: any = { query: { payment_id: 'missing' }, params: {} };
+    const req: any = { query: {}, params: {}, body: { ids: ['missing'] } };
     const res = mockRes();
 
     await deletePayment(req, res, jest.fn());

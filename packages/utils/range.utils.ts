@@ -6,9 +6,7 @@ export interface RangeQuery {
   end_date?: string;
 }
 
-// trend is intentionally never populated yet — a daily bucketed series for
-// the sparkline is a separate charting concern from the headline
-// value/growth pair, deferred until it's actually needed.
+
 export interface StatMetric {
   value: string;
   growth: string;

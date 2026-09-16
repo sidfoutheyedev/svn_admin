@@ -2,7 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { errorHandler, successHandler } from "../../packages/handlers";
 import { CONSTANT } from "../../packages/constants";
 import { isServiceError, parsePagination } from "../../packages/utils";
-import type { PaginationQuery } from "../../packages/utils";
+import type { PaginationQuery, RangeQuery } from "../../packages/utils";
 import { inventoryService } from "./inventory.services";
 import type { ApiResponse } from "./inventory.type";
 
@@ -45,7 +45,7 @@ export const getVariantStock = async (
 };
 
 export const listInventory = async (
-  req: Request<{}, {}, {}, PaginationQuery & { status?: string }>,
+  req: Request<{}, {}, {}, PaginationQuery & RangeQuery & { status?: string }>,
   res: Response<ApiResponse<unknown>>,
   next: NextFunction,
 ) => {
@@ -53,8 +53,12 @@ export const listInventory = async (
     const { page, limit, skip } = parsePagination(req.query);
     const data = await inventoryService.listInventory(
       { page, limit, skip },
-      { query: req.query.query, status : req.query.status},
-      
+      { query: req.query.query, status: req.query.status },
+      {
+        range: req.query.range,
+        start_date: req.query.start_date,
+        end_date: req.query.end_date,
+      },
     );
 
     if (isServiceError(data)) {

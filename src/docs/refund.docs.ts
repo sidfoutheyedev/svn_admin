@@ -7,15 +7,6 @@
  *     Transitioning a refund's status to PROCESSED restocks the inventory-managed
  *     lines of the linked order, sets that order's status to RETURNED, and — if the
  *     order has a linked payment — sets that payment's status to REFUNDED.
- *     NOTE — routing drift found in refund.routes.ts: a soft-delete handler
- *     (deleteRefund, expecting a JSON body of { ids: string[] }) is registered as
- *     `router.post("/", requireAuth, deleteRefund)` AFTER the create route, which is
- *     also `router.post("/", requireAuth, validateBody(refundCreateSchema), createRefund)`.
- *     Express matches routes in registration order and the create handler never calls
- *     `next()`, so this second `POST /` registration is fully shadowed and currently
- *     unreachable — every `POST /v1/refunds` request is handled by createRefund. There
- *     is presently no way to reach the soft-delete handler through the HTTP API; only
- *     the hard-delete route below is reachable for removing refunds.
  */
 
 /**
@@ -148,10 +139,6 @@
  *       shipment_id is supplied it must belong to that same order and not be soft-deleted.
  *       The created refund always starts as refund_status REQUESTED regardless of any
  *       other field in the request body.
- *       NOTE: refund.routes.ts also registers a second, unreachable `POST /` handler
- *       (deleteRefund, soft-delete by `{ ids: string[] }`) after this one — see the tag
- *       description above. It is not documented as a separate operation here because it
- *       cannot currently be invoked.
  *     tags: [Refunds]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -253,12 +240,52 @@
 
 /**
  * @swagger
+ * /v1/refunds/soft-delete:
+ *   post:
+ *     summary: Soft-delete refunds by id (bulk, reversible)
+ *     description: >
+ *       Sets is_deleted to true on every matching, non-deleted refund. 404 when
+ *       none of the given ids match a non-deleted refund, and 400 with "Refund
+ *       IDs are required" if ids is empty after body validation. (Previously
+ *       this handler was registered on `POST /v1/refunds`, shadowed by
+ *       createRefund on the same method+path and therefore unreachable; it
+ *       now has its own path.)
+ *     tags: [Refunds]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/RefundBulkIdsRequest' }
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: integer, example: 200 }
+ *                 message: { type: string, example: Record Deleted Successfully }
+ *                 data: { $ref: '#/components/schemas/RefundDeleteResult' }
+ *       400:
+ *         description: Body failed validation — missing/empty ids array (message is the joined Zod error messages).
+ *       401:
+ *         description: Missing/invalid bearer token, or the token's role isn't admin.
+ *       404:
+ *         description: None of the given ids matched a non-deleted refund.
+ *       500:
+ *         description: Unexpected server error.
+ */
+
+/**
+ * @swagger
  * /v1/refunds/hard-delete:
  *   post:
  *     summary: Permanently delete refunds by id (bulk, irreversible)
  *     description: >
- *       Removes matching Refund documents outright via deleteMany — unlike the (currently
- *       unreachable) soft-delete path, this ignores is_deleted entirely, so it can hard-delete
+ *       Removes matching Refund documents outright via deleteMany — unlike the
+ *       soft-delete path above, this ignores is_deleted entirely, so it can hard-delete
  *       refunds regardless of prior soft-delete state. Always responds 200 with the count
  *       actually removed, including 0 when none of the ids matched (no 404 branch).
  *     tags: [Refunds]

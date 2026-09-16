@@ -147,9 +147,9 @@ const updatePaymentsStatus = async (ids: string[], status: PaymentStatus) => {
 
 const deletePayment = async (ids: string[]) => {
     try {
-        if (ids.length) {
+        if (!ids.length) {
             return {
-                status: CONSTANT.HTTP_STATUS.CONFLICT,
+                status: CONSTANT.HTTP_STATUS.BAD_REQUEST,
                 message: "Payment_id is required",
             };
         }

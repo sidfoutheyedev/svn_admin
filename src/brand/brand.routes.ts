@@ -22,7 +22,7 @@ router.post("/", requireAuth, validateBody(brandSchema), createBrand);
 router.get("/", requireAuth, getAllBrand);
 router.get("/details", requireAuth, readBrand);
 router.patch("/", requireAuth, validateBody(brandUpdateSchema), updateBrand);
-router.post("/", requireAuth, deleteBrand);
+router.post("/soft-delete", requireAuth, validateBody(brandBulkIdsSchema), deleteBrand);
 router.post("/hard-delete", requireAuth, validateBody(brandBulkIdsSchema), hardDeleteBrands);
 router.patch("/status", requireAuth, validateBody(brandBulkStatusSchema), updateBrandsStatus);
 

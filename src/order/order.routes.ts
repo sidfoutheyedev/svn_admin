@@ -21,7 +21,7 @@ router.post("/", requireAuth, validateBody(orderCreateSchema), createOrder);
 router.get("/", requireAuth, getAllOrders);
 router.get("/details", requireAuth, readOrder);
 router.patch("/status", requireAuth, validateBody(orderBulkStatusSchema), updateOrdersStatus);
-router.post("/", requireAuth, deleteOrder);
+router.post("/soft-delete", requireAuth, validateBody(orderBulkIdsSchema), deleteOrder);
 router.post("/hard-delete", requireAuth, validateBody(orderBulkIdsSchema), hardDeleteOrders);
 
 export default router;

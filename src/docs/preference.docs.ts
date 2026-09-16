@@ -9,8 +9,8 @@
  *     unique index on `category_id` filtered to `is_deleted: false`), so a
  *     soft-deleted preference's category can immediately be reused by a new
  *     preference. There is no hard-delete endpoint for this module — deletion
- *     is always a soft delete (`is_deleted` flips to `true`) of a single
- *     preference at a time.
+ *     is always a soft delete (`is_deleted` flips to `true`), via the bulk
+ *     `POST /v1/preferences/soft-delete` endpoint below.
  */
 
 /**
@@ -38,7 +38,7 @@
  *       description: >
  *         Shape returned by the list endpoint. Unlike PreferenceResponse this is
  *         built via an aggregation pipeline that joins in the category name/image/
- *         description and the resolved brand names (both only from non-deleted
+ *         description and the resolved brands (both only from non-deleted
  *         category/brand documents).
  *       properties:
  *         preference_id: { type: string, example: 9f1a2b3c4d5e6f7890ab12cd34ef5678 }
@@ -50,10 +50,14 @@
  *           type: array
  *           items: { type: string }
  *           example: [brand-123, brand-456]
- *         brand_names:
+ *         brands:
  *           type: array
- *           items: { type: string }
- *           example: [Ray-Ban, Oakley]
+ *           items:
+ *             type: object
+ *             properties:
+ *               brand_id: { type: string, example: brand-123 }
+ *               brand_name: { type: string, example: Ray-Ban }
+ *               brand_image: { type: string, nullable: true, example: https://cdn.example.com/brands/ray-ban.png }
  *         priority: { type: integer, minimum: 1, maximum: 10, example: 1 }
  *         status: { type: string, enum: [Draft, Live, Hidden], example: Draft }
  *         is_deleted: { type: boolean, example: false }
@@ -105,6 +109,19 @@
  *           items: { type: string, minLength: 1 }
  *           example: [preference-123, preference-456]
  *         status: { type: string, enum: [Draft, Live, Hidden], example: Live }
+ *     PreferenceBulkIdsRequest:
+ *       type: object
+ *       required: [ids]
+ *       properties:
+ *         ids:
+ *           type: array
+ *           minItems: 1
+ *           items: { type: string, minLength: 1 }
+ *           example: [preference-123, preference-456]
+ *     PreferenceBulkDeleteResponse:
+ *       type: object
+ *       properties:
+ *         deleted: { type: integer, description: "matchedCount from the bulk soft-delete update." }
  *     PreferenceBulkUpdateResult:
  *       type: object
  *       description: Raw MongoDB updateMany result. Ids that don't match an existing, non-deleted preference are silently skipped (matchedCount can be less than the number of ids submitted); no per-id error is returned.
@@ -138,7 +155,7 @@
  *       - in: query
  *         name: query
  *         schema: { type: string }
- *         description: Case-insensitive substring match against the joined category_name OR any joined brand_names (not against category_id/brand_ids directly).
+ *         description: Case-insensitive substring match against the joined category_name OR any joined brands.brand_name (not against category_id/brand_ids directly).
  *     responses:
  *       200:
  *         description: Preferences returned successfully
@@ -269,19 +286,31 @@
  *           application/json:
  *             schema: { $ref: '#/components/schemas/PreferenceErrorResponse' }
  *             example: { status: 500, message: Something Went Wrong }
- *   delete:
- *     summary: Soft-delete a preference by preference_id
- *     description: Sets is_deleted to true on the matching, currently non-deleted preference. There is no bulk/hard delete for preferences.
+ */
+
+/**
+ * @swagger
+ * /v1/preferences/soft-delete:
+ *   post:
+ *     summary: Bulk soft-delete preferences by id
+ *     description: >
+ *       Sets is_deleted to true on every matching, non-deleted preference. 400
+ *       with "Preference IDs are required" if ids is empty after body
+ *       validation; 404 when none of the given ids match a non-deleted
+ *       preference. (Previously this handler was registered on
+ *       `POST /v1/preferences`, shadowed by createPreferencesController on
+ *       the same method+path and therefore unreachable; it now has its own
+ *       path.)
  *     tags: [Preferences]
  *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: query
- *         name: preference_id
- *         required: true
- *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/PreferenceBulkIdsRequest' }
  *     responses:
  *       200:
- *         description: Preference deleted (soft) successfully
+ *         description: Preferences soft-deleted successfully
  *         content:
  *           application/json:
  *             schema:
@@ -289,7 +318,13 @@
  *               properties:
  *                 status: { type: integer, example: 200 }
  *                 message: { type: string, example: Record Deleted Successfully }
- *                 data: { $ref: '#/components/schemas/PreferenceResponse' }
+ *                 data: { $ref: '#/components/schemas/PreferenceBulkDeleteResponse' }
+ *       400:
+ *         description: Body validation failed (ids missing/empty), or "Preference IDs are required"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/PreferenceErrorResponse' }
+ *             example: { status: 400, message: "Preference IDs are required" }
  *       401:
  *         description: Missing or invalid bearer token
  *         content:
@@ -297,7 +332,7 @@
  *             schema: { $ref: '#/components/schemas/PreferenceErrorResponse' }
  *             example: { status: 401, message: Unauthorized }
  *       404:
- *         description: No non-deleted preference matches preference_id
+ *         description: None of the given ids matched a non-deleted preference
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/PreferenceErrorResponse' }

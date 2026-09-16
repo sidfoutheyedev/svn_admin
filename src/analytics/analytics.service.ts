@@ -7,6 +7,7 @@ import {
 } from "../../packages/utils";
 import type { StatMetric } from "../../packages/utils";
 import { productModel } from "../models/product.model";
+import { productVariantModel } from "../models/product_varient.model";
 import { OrderModel } from "../models/order.model";
 import { RefundModel } from "../models/refund.model";
 import { UserModel } from "../models/user.model";
@@ -17,6 +18,7 @@ import type {
   AnalyticsQuery,
   RevenueOverviewResponse,
   StatsOverviewResponse,
+  TopPerformingProductsResponse,
 } from "./analytics.type";
 
 const toServiceError = (error: unknown) => ({
@@ -238,7 +240,140 @@ const getRevenueOverview = async (
   }
 };
 
+const TOP_PERFORMERS_LIMIT = 10;
+
+const leftSwipeCountsFor = async (
+  start: Date,
+  end: Date,
+  productIds: string[],
+) => {
+  const rows = await SwipeEventModel.aggregate([
+    {
+      $match: {
+        direction: "LEFT",
+        product_id: { $in: productIds },
+        createdAt: { $gte: start, $lt: end },
+      },
+    },
+    { $group: { _id: "$product_id", count: { $sum: 1 } } },
+  ]);
+  return new Map<string, number>(rows.map((r) => [r._id, r.count]));
+};
+
+
+const getperfromingproduct = async (
+  query: AnalyticsQuery,
+): Promise<TopPerformingProductsResponse | ReturnType<typeof toServiceError>> => {
+  try {
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      resolveWindows(query);
+
+    const ranked = await SwipeEventModel.aggregate([
+      {
+        $match: {
+          direction: "LEFT",
+          createdAt: { $gte: currentStart, $lt: currentEnd },
+        },
+      },
+      { $group: { _id: "$product_id", left_swipe_count: { $sum: 1 } } },
+      { $sort: { left_swipe_count: -1 } },
+      { $limit: TOP_PERFORMERS_LIMIT },
+      {
+        $lookup: {
+          from: productModel.collection.name,
+          localField: "_id",
+          foreignField: "product_id",
+          as: "productDoc",
+        },
+      },
+      { $unwind: "$productDoc" },
+      {
+        $lookup: {
+          from: productVariantModel.collection.name,
+          let: { productId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ["$product_id", "$$productId"] },
+                is_active: true,
+              },
+            },
+            { $sort: { is_default: -1 } },
+            { $limit: 1 },
+          ],
+          as: "variantDoc",
+        },
+      },
+      { $unwind: { path: "$variantDoc", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: CategoryModel.collection.name,
+          localField: "productDoc.category",
+          foreignField: "category_id",
+          as: "categoryDoc",
+        },
+      },
+      { $unwind: { path: "$categoryDoc", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: CategoryModel.collection.name,
+          localField: "productDoc.sub_category",
+          foreignField: "category_id",
+          as: "subCategoryDoc",
+        },
+      },
+      {
+        $unwind: { path: "$subCategoryDoc", preserveNullAndEmptyArrays: true },
+      },
+      {
+        $project: {
+          _id: 0,
+          product_id: "$_id",
+          product_name: "$productDoc.product_name",
+          product_image: { $arrayElemAt: ["$variantDoc.product_images", 0] },
+          category_id: { $ifNull: ["$categoryDoc.category_id", null] },
+          category_name: { $ifNull: ["$categoryDoc.category_name", null] },
+          sub_category_id: { $ifNull: ["$subCategoryDoc.category_id", null] },
+          sub_category_name: {
+            $ifNull: ["$subCategoryDoc.category_name", null],
+          },
+          left_swipe_count: 1,
+        },
+      },
+    ]);
+
+    if (!ranked.length) return [];
+
+    const previousCounts = await leftSwipeCountsFor(
+      previousStart,
+      previousEnd,
+      ranked.map((product) => product.product_id),
+    );
+
+    return ranked.map((product) => ({
+      product_id: product.product_id,
+      product_name: product.product_name,
+      product_image: product.product_image ?? null,
+      category_id: product.category_id,
+      category_name: product.category_name,
+      sub_category_id: product.sub_category_id,
+      sub_category_name: product.sub_category_name,
+      left_swipe_count: product.left_swipe_count,
+      growth_rate: formatGrowth(
+        percentChange(
+          product.left_swipe_count,
+          previousCounts.get(product.product_id) ?? 0,
+        ),
+      ),
+    }));
+  } catch (error) {
+    return toServiceError(error);
+  }
+};
+
+
 export const analyticsService = {
   getStatsOverview,
   getRevenueOverview,
+  getperfromingproduct
 };

@@ -177,20 +177,6 @@
  */
 
 /**
- * IMPLEMENTATION NOTE (not part of the OpenAPI spec — kept here so it isn't lost):
- * order.routes.ts registers BOTH `router.post("/", requireAuth, validateBody(orderCreateSchema), createOrder)`
- * and, further down, `router.post("/", requireAuth, deleteOrder)` for the exact same method+path. Express
- * dispatches to the first matching route only, so the second registration (the soft-delete handler,
- * orderService.deleteOrder) is dead code and is never reached in the running app — any POST /v1/orders call
- * is handled by createOrder and will fail orderCreateSchema validation if it doesn't look like a create
- * payload. (Prior to the most recent revision this route was `router.delete("/", ...)`, which is how the
- * previous version of these docs described it; that DELETE route no longer exists.) Only the reachable
- * operation is documented below. If routing is fixed to restore a working soft-delete, it takes
- * OrderBulkIdsRequest and returns OrderBulkDeleteResponse (200), 404 when none of the ids match a
- * non-deleted order, matching the pattern already used by hard-delete below.
- */
-
-/**
  * @swagger
  * /v1/orders:
  *   get:
@@ -315,6 +301,41 @@
  *                 data: { $ref: '#/components/schemas/OrderBulkStatusResponse' }
  *       400: { description: Body failed validation (empty ids, missing/invalid status). }
  *       401: { description: Unauthorized }
+ *       500: { description: Something Went Wrong }
+ */
+
+/**
+ * @swagger
+ * /v1/orders/soft-delete:
+ *   post:
+ *     summary: Soft-delete orders by id (bulk, reversible)
+ *     description: >
+ *       Sets is_deleted to true on every matching, non-deleted order. 404 when
+ *       none of the given ids match a non-deleted order. (Previously this
+ *       handler was registered on `POST /v1/orders`, shadowed by createOrder
+ *       on the same method+path and therefore unreachable; it now has its
+ *       own path.)
+ *     tags: [Orders]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/OrderBulkIdsRequest' }
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: integer, example: 200 }
+ *                 message: { type: string, example: Record Deleted Successfully }
+ *                 data: { $ref: '#/components/schemas/OrderBulkDeleteResponse' }
+ *       400: { description: Body failed validation (empty ids). }
+ *       401: { description: Unauthorized }
+ *       404: { description: None of the given ids matched a non-deleted order. }
  *       500: { description: Something Went Wrong }
  */
 

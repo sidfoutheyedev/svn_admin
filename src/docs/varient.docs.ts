@@ -108,6 +108,14 @@
  *           type: integer
  *           example: 2
  *           description: Count of non-deleted documents whose status was changed (updateMany.modifiedCount). Can be 0 if none of the ids matched - this endpoint does not 404.
+ *     VarientBulkDeleteResponse:
+ *       type: object
+ *       description: What deleteVarient (varient.services.ts) returns - currently unreachable over HTTP, see the implementation note above /v1/varients.
+ *       properties:
+ *         deleted:
+ *           type: integer
+ *           example: 2
+ *           description: Count of non-deleted documents soft-deleted (updateMany.modifiedCount).
  *     VarientErrorResponse:
  *       type: object
  *       properties:
@@ -168,12 +176,7 @@
  *     description: >
  *       Rejects with 409 if a non-deleted varient with the same varient_name
  *       already exists (varient_name is also unique at the schema/index
- *       level). Note: the router registers a second `POST /v1/varients`
- *       handler (bulk soft-delete, see deleteVarient in varient.services.ts)
- *       after this one on the exact same method+path; because this handler
- *       always sends a response and never calls next(), that second
- *       registration is unreachable in the running API - bulk soft-delete
- *       currently cannot be invoked over HTTP for this module.
+ *       level).
  *     tags: [Varients]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -305,6 +308,63 @@
  *               properties:
  *                 status: { type: integer, example: 404 }
  *                 message: { type: string, example: Not Found }
+ *       500:
+ *         description: Something went wrong
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/VarientErrorResponse' }
+ */
+
+/**
+ * @swagger
+ * /v1/varients/soft-delete:
+ *   post:
+ *     summary: Soft-delete varients by id (bulk, reversible)
+ *     description: >
+ *       Sets is_deleted to true on every matching, non-deleted varient. 409
+ *       ("Brand IDs are required" — copy-pasted message text) if ids is empty
+ *       after body validation; 404 when none of the given ids match a
+ *       non-deleted varient. (Previously this handler was registered on
+ *       `POST /v1/varients`, shadowed by createVarient on the same
+ *       method+path and therefore unreachable; it now has its own path.)
+ *     tags: [Varients]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/VarientBulkIdsRequest' }
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: integer, example: 200 }
+ *                 message: { type: string, example: Record Deleted Successfully }
+ *                 data: { $ref: '#/components/schemas/VarientBulkDeleteResponse' }
+ *       400:
+ *         description: Validation error (ids missing or empty)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/VarientErrorResponse' }
+ *       401:
+ *         description: Unauthorized - missing/invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/VarientErrorResponse' }
+ *       404:
+ *         description: None of the given ids matched a non-deleted varient
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/VarientErrorResponse' }
+ *       409:
+ *         description: ids array was empty (passes Zod's minItems but reached the service check — in practice unreachable once validateBody(varientBulkIdsSchema) is applied)
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/VarientErrorResponse' }
  *       500:
  *         description: Something went wrong
  *         content:

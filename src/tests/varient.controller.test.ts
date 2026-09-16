@@ -100,22 +100,22 @@ describe('updateVarient', () => {
 });
 
 describe('deleteVarient', () => {
-  it('reads varient_id from the query string, not params', async () => {
+  it('forwards req.body.ids to the service', async () => {
     (varientService.deleteVarient as jest.Mock).mockResolvedValue(record);
 
-    const req: any = { query: { varient_id: 'abc123' }, params: {} };
+    const req: any = { query: {}, params: {}, body: { ids: ['abc123'] } };
     const res = mockRes();
 
     await deleteVarient(req, res, jest.fn());
 
-    expect(varientService.deleteVarient).toHaveBeenCalledWith('abc123');
+    expect(varientService.deleteVarient).toHaveBeenCalledWith(['abc123']);
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
-  it('returns 404 when the varient_id in the query does not exist', async () => {
+  it('returns 404 when the varient_id in the body does not exist', async () => {
     (varientService.deleteVarient as jest.Mock).mockResolvedValue({ status: 404, message: 'Not Found' });
 
-    const req: any = { query: { varient_id: 'missing' }, params: {} };
+    const req: any = { query: {}, params: {}, body: { ids: ['missing'] } };
     const res = mockRes();
 
     await deleteVarient(req, res, jest.fn());

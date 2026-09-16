@@ -27,7 +27,7 @@ router.post("/", requireAuth, validateBody(varientSchema), createVarient);
 router.get("/", requireAuth, getAllVarient);
 router.get("/details", requireAuth, readVarient);
 router.patch("/", requireAuth, validateBody(varientUpdateSchema), updateVarient);
-router.post("/", requireAuth, deleteVarient);
+router.post("/soft-delete", requireAuth, validateBody(varientBulkIdsSchema), deleteVarient);
 router.post("/hard-delete", requireAuth, validateBody(varientBulkIdsSchema), hardDeleteVarients);
 router.patch("/status", requireAuth, validateBody(varientBulkStatusSchema), updateVarientsStatus);
 

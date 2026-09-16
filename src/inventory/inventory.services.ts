@@ -1,13 +1,23 @@
 import type { PipelineStage } from "mongoose";
 import { CONSTANT } from "../../packages/constants";
-import { buildPaginatedResult } from "../../packages/utils";
-import type { PaginationParams } from "../../packages/utils";
+import {
+  buildPaginatedResult,
+  formatGrowth,
+  percentChange,
+  resolveWindows,
+} from "../../packages/utils";
+import type { PaginationParams, RangeQuery } from "../../packages/utils";
 import { inventoryModel } from "../models/inventory.model";
 import { productModel } from "../models/product.model";
 import { productVariantModel } from "../models/product_varient.model";
 import { CategoryModel } from "../models/category.model";
 import { OrderModel } from "../models/order.model";
-import type { MovementType, RecordMovementRequest } from "./inventory.type";
+import type {
+  InventoryListSummary,
+  InventoryTopSoldProduct,
+  MovementType,
+  RecordMovementRequest,
+} from "./inventory.type";
 
 export class InventoryError extends Error {
   status: number;
@@ -194,9 +204,60 @@ const listMovements = async (
   }
 };
 
+// Units sold across all products within a window — grouped by product_id so
+// the highest seller can be picked with $sort/$limit.
+const topSoldProductFor = async (start: Date, end: Date) => {
+  const [result] = await OrderModel.aggregate([
+    {
+      $match: {
+        is_deleted: false,
+        status: { $nin: ["CANCELLED", "RETURNED"] },
+        createdAt: { $gte: start, $lt: end },
+      },
+    },
+    { $unwind: "$products" },
+    {
+      $group: {
+        _id: "$products.product_id",
+        quantity: { $sum: "$products.quantity" },
+      },
+    },
+    { $sort: { quantity: -1 } },
+    { $limit: 1 },
+  ]);
+
+  return result
+    ? { product_id: result._id as string, quantity: result.quantity as number }
+    : null;
+};
+
+// Units sold for one specific product within a window — used to compute the
+// previous-window figure for the current window's top seller.
+const soldQuantityForProduct = async (
+  product_id: string,
+  start: Date,
+  end: Date,
+) => {
+  const [result] = await OrderModel.aggregate([
+    {
+      $match: {
+        is_deleted: false,
+        status: { $nin: ["CANCELLED", "RETURNED"] },
+        createdAt: { $gte: start, $lt: end },
+      },
+    },
+    { $unwind: "$products" },
+    { $match: { "products.product_id": product_id } },
+    { $group: { _id: null, quantity: { $sum: "$products.quantity" } } },
+  ]);
+
+  return result?.quantity ?? 0;
+};
+
 const listInventory = async (
   { page, limit, skip }: PaginationParams,
-  filters: { query?: string , status? : string} = {},
+  filters: { query?: string; status?: string } = {},
+  rangeQuery: RangeQuery = {},
 ) => {
   try {
     const basePipeline: PipelineStage[] = [
@@ -339,7 +400,59 @@ const listInventory = async (
     ]);
 
     const total = totalResult[0]?.total ?? 0;
-    return buildPaginatedResult(items, total, page, limit);
+
+    const { currentStart, currentEnd, previousStart, previousEnd } =
+      resolveWindows(rangeQuery);
+
+    const [totalStockResult, topSold] = await Promise.all([
+      productVariantModel.aggregate([
+        { $match: { is_active: true } },
+        { $group: { _id: null, total: { $sum: "$stock_on_hand" } } },
+      ]),
+      topSoldProductFor(currentStart, currentEnd),
+    ]);
+
+    const total_stock_count = totalStockResult[0]?.total ?? 0;
+
+    let top_sold_product: InventoryTopSoldProduct | null = null;
+    if (topSold) {
+      const [productDoc, defaultVariant, previousQuantity] =
+        await Promise.all([
+          productModel
+            .findOne(
+              { product_id: topSold.product_id },
+              { product_name: 1, _id: 0 },
+            )
+            .lean(),
+          productVariantModel
+            .findOne(
+              { product_id: topSold.product_id, is_active: true },
+              { product_images: 1, _id: 0 },
+            )
+            .sort({ is_default: -1 })
+            .lean(),
+          soldQuantityForProduct(
+            topSold.product_id,
+            previousStart,
+            previousEnd,
+          ),
+        ]);
+
+      top_sold_product = {
+        product_name: productDoc?.product_name ?? "",
+        product_image: defaultVariant?.product_images?.[0] ?? null,
+        growth_rate: formatGrowth(
+          percentChange(topSold.quantity, previousQuantity),
+        ),
+      };
+    }
+
+    const summary: InventoryListSummary = {
+      total_stock_count,
+      top_sold_product,
+    };
+
+    return { ...buildPaginatedResult(items, total, page, limit), summary };
   } catch (error) {
     return toServiceError(error);
   }

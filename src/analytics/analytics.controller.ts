@@ -62,3 +62,28 @@ export const getRevenueOverview = async (
         );
     }
 };
+
+export const getTopperformerproducts = async (req: Request<{}, {}, {}, AnalyticsQuery>, res: Response, next: NextFunction) => {
+
+    try {
+        const data = await analyticsService.getperfromingproduct(req.query);
+        if (isServiceError(data)) {
+            return errorHandler(data, req, res);
+        }
+        return successHandler(
+            {
+                status: CONSTANT.HTTP_STATUS.OK,
+                message: CONSTANT.PAYLOAD.RECORD_FETCHED_SUCCESSFULLY,
+                data
+            }, req, res
+        )
+
+
+    } catch (error) {
+        return errorHandler({
+            status: CONSTANT.HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: error instanceof Error ? error.message : CONSTANT.STATUS.SOMETHING_WENT_WRONG
+        }, req, res)
+    }
+
+}

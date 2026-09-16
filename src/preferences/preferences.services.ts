@@ -69,8 +69,17 @@ const getPreferences = async ({
           category_name: {
             $arrayElemAt: ["$category.category_name", 0],
           },
-          brand_ids: 1,
-          brand_names: "$brands.brand_name",
+          brands: {
+            $map: {
+              input: "$brands",
+              as: "brand",
+              in: {
+                brand_id: "$$brand.brand_id",
+                brand_name: "$$brand.brand_name",
+                brand_image : "$$brand.brand_image"
+              },
+            },
+          },
           priority: 1,
           status: 1,
           is_deleted: 1,
@@ -90,7 +99,7 @@ const getPreferences = async ({
                     },
                   },
                   {
-                    brand_names: {
+                    "brands.brand_name": {
                       $regex: escapeRegex(query),
                       $options: "i",
                     },
@@ -234,7 +243,7 @@ const deletePreferences = async (ids: string | string[]) => {
     if (!ids || !ids.length) {
       return {
         status: CONSTANT.HTTP_STATUS.BAD_REQUEST,
-        message: "Brand IDs are required",
+        message: "Preference IDs are required",
       };
     }
 

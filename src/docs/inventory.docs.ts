@@ -42,6 +42,20 @@
  *         sold_stock: { type: integer, description: Lifetime quantity sold — sum of OUTBOUND/SALE movement quantities for this variant. 0 when never sold. }
  *         total_stock: { type: integer, description: stock_on_hand + sold_stock, i.e. the total quantity ever stocked for this variant. }
  *         total_revenue: { type: number, description: Lifetime revenue — sum of order line_total across all orders containing this variant. 0 when never sold. }
+ *     InventoryTopSoldProduct:
+ *       type: object
+ *       nullable: true
+ *       description: Best-selling product (by units sold) within the resolved range window. null when no orders fall in that window.
+ *       properties:
+ *         product_name: { type: string, example: Aviator Sunglasses }
+ *         product_image: { type: string, nullable: true, description: First image of the product's default (or first active) variant. null when the variant has no images. }
+ *         growth_rate: { type: string, example: "+12.5%", description: Percentage change in units sold for this product versus the equal-length window immediately before the resolved range. }
+ *     InventoryListSummary:
+ *       type: object
+ *       description: Computed independently of page/query/status filters — total_stock_count always covers every active variant, and top_sold_product is scoped only by the range/start_date/end_date window.
+ *       properties:
+ *         total_stock_count: { type: integer, description: Sum of stock_on_hand across every active variant. }
+ *         top_sold_product: { $ref: '#/components/schemas/InventoryTopSoldProduct' }
  *     InventoryListResponse:
  *       type: object
  *       properties:
@@ -50,6 +64,7 @@
  *         page: { type: integer }
  *         limit: { type: integer }
  *         totalPages: { type: integer }
+ *         summary: { $ref: '#/components/schemas/InventoryListSummary' }
  *     InventoryStockResponse:
  *       type: object
  *       properties:
@@ -75,8 +90,11 @@
  * @swagger
  * /v1/inventory:
  *   get:
- *     summary: List one row per active variant across every product, with current stock plus lifetime sold/revenue figures
- *     description: Only variants with is_active true are included. Supports a case-insensitive substring search across the parent product's name/id and category/sub-category names, and an exact (case-insensitive) filter on the parent product's status. Sorted by the variant's createdAt, newest first.
+ *     summary: List one row per active variant across every product, with current stock plus lifetime sold/revenue figures, plus a range-filterable summary
+ *     description: |
+ *       Only variants with is_active true are included in `items`. Supports a case-insensitive substring search across the parent product's name/id and category/sub-category names, and an exact (case-insensitive) filter on the parent product's status. Sorted by the variant's createdAt, newest first.
+ *
+ *       `summary.total_stock_count` is unaffected by any filter/window. `summary.top_sold_product` is scoped to a rolling `range` (7d/30d/90d, defaults to 30d when omitted or invalid) or an explicit `start_date`/`end_date` window (used only when both are valid dates and end_date is after start_date; otherwise falls back to `range`); its `growth_rate` compares that window against the equal-length window immediately before it.
  *     tags: [Inventory]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -95,6 +113,18 @@
  *         name: status
  *         schema: { type: string, enum: [Live, Draft, Hidden] }
  *         description: Exact (case-insensitive) match against the parent product's status.
+ *       - in: query
+ *         name: range
+ *         schema: { type: string, enum: [7d, 30d, 90d], default: 30d }
+ *         description: Rolling window for summary.top_sold_product. Ignored when start_date/end_date are both given and valid. Falls back to 30d if omitted or not one of the enum values.
+ *       - in: query
+ *         name: start_date
+ *         schema: { type: string, format: date }
+ *         description: ISO date. Only takes effect together with a valid end_date that is after it; otherwise range is used instead.
+ *       - in: query
+ *         name: end_date
+ *         schema: { type: string, format: date }
+ *         description: ISO date, must be after start_date to take effect.
  *     responses:
  *       200:
  *         description: Record Fetched Successfully
@@ -127,6 +157,12 @@
  *                 page: 1
  *                 limit: 20
  *                 totalPages: 1
+ *                 summary:
+ *                   total_stock_count: 512
+ *                   top_sold_product:
+ *                     product_name: Aviator Sunglasses
+ *                     product_image: https://cdn.example.com/products/aviator-black.png
+ *                     growth_rate: "+12.5%"
  *       401:
  *         description: Unauthorized — missing/invalid bearer token, or token role is not admin
  *         content:

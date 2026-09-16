@@ -2,7 +2,7 @@
  * @swagger
  * tags:
  *   name: Analytics
- *   description: Read-only reporting/dashboard endpoints that aggregate counts and revenue across products, orders, refunds, users, brands, and swipe events for a given time window. No create/update/delete operations. NOTE — although this module imports the requireAuth bearer-JWT guard, analytics.routes.ts never actually wires it onto either route below, so both endpoints currently run without any auth check despite the app-wide default requiring a bearer token.
+ *   description: Read-only reporting/dashboard endpoints that aggregate counts and revenue across products, orders, refunds, users, brands, and swipe events for a given time window. No create/update/delete operations. NOTE — although this module imports the requireAuth bearer-JWT guard, analytics.routes.ts never actually wires it onto any of the routes below, so all three endpoints currently run without any auth check despite the app-wide default requiring a bearer token.
  */
 
 /**
@@ -84,6 +84,33 @@
  *           allOf:
  *             - $ref: '#/components/schemas/AnalyticsStatMetric'
  *           description: Same as total_revenue but restricted to order lines with inventory_managed true (physical/onboarded catalog). affiliate_revenue is intentionally not reported — affiliate product management isn't built out yet.
+ *     AnalyticsTopPerformingProduct:
+ *       type: object
+ *       description: One product ranked by LEFT-direction ("like") swipe count within the resolved window.
+ *       properties:
+ *         product_id: { type: string, example: PROD-100 }
+ *         product_name: { type: string, example: Aviator Sunglasses }
+ *         product_image:
+ *           type: string
+ *           nullable: true
+ *           description: First image of the product's default (or first active) variant. null when the variant has no images.
+ *           example: https://cdn.example.com/products/aviator-black.png
+ *         category_id: { type: string, nullable: true, example: CAT-1 }
+ *         category_name: { type: string, nullable: true, example: sunglasses }
+ *         sub_category_id: { type: string, nullable: true, example: CAT-12 }
+ *         sub_category_name: { type: string, nullable: true, example: aviator }
+ *         left_swipe_count:
+ *           type: integer
+ *           description: Count of LEFT swipes ("like") for this product within the resolved window.
+ *           example: 154
+ *         growth_rate:
+ *           type: string
+ *           description: Percent change in left_swipe_count vs. the equal-length window immediately before the resolved one, formatted with an explicit sign, e.g. "+12.4%", "-3.1%", or "0%".
+ *           example: "+12.4%"
+ *     AnalyticsTopPerformingProductsResponse:
+ *       type: array
+ *       description: Top 10 products by left_swipe_count within the resolved window, sorted descending. Empty array when no LEFT swipes fall in the window.
+ *       items: { $ref: '#/components/schemas/AnalyticsTopPerformingProduct' }
  *     AnalyticsErrorResponse:
  *       type: object
  *       properties:
@@ -195,6 +222,59 @@
  *                 onboarded_revenue: { value: "152040", growth: "+7.3%" }
  *       500:
  *         description: Something Went Wrong — an unexpected error while resolving the window or aggregating order totals.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/AnalyticsErrorResponse' }
+ */
+
+/**
+ * @swagger
+ * /v1/analytics/top-performer:
+ *   get:
+ *     summary: Top performing products — the 10 products with the most LEFT ("like") swipes in the window, with growth vs. the previous window
+ *     description: |
+ *       Accepts either a rolling `range` (7d/30d/90d, defaults to 30d when omitted or invalid) or an explicit `start_date`/`end_date` window (used only when both are valid dates and end_date is after start_date; otherwise falls back to `range`). Ranks products by count of LEFT-direction swipe events within the resolved window, descending, capped at 10. Each product's growth_rate compares its left_swipe_count against the equal-length window immediately before it.
+ *     tags: [Analytics]
+ *     security: []
+ *     parameters:
+ *       - in: query
+ *         name: range
+ *         schema: { type: string, enum: [7d, 30d, 90d], default: 30d }
+ *         description: Rolling window to report on. Ignored when start_date/end_date are both given and valid. Falls back to 30d if omitted or not one of the enum values.
+ *       - in: query
+ *         name: start_date
+ *         schema: { type: string, format: date }
+ *         description: ISO date. Only takes effect together with a valid end_date that is after it; otherwise range is used instead.
+ *       - in: query
+ *         name: end_date
+ *         schema: { type: string, format: date }
+ *         description: ISO date, must be after start_date to take effect.
+ *     responses:
+ *       200:
+ *         description: Successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: integer, example: 200 }
+ *                 message: { type: string, example: Record Fetched Successfully }
+ *                 data: { $ref: '#/components/schemas/AnalyticsTopPerformingProductsResponse' }
+ *             example:
+ *               status: 200
+ *               message: Record Fetched Successfully
+ *               data:
+ *                 - product_id: PROD-100
+ *                   product_name: Aviator Sunglasses
+ *                   product_image: https://cdn.example.com/products/aviator-black.png
+ *                   category_id: CAT-1
+ *                   category_name: sunglasses
+ *                   sub_category_id: CAT-12
+ *                   sub_category_name: aviator
+ *                   left_swipe_count: 154
+ *                   growth_rate: "+12.4%"
+ *       500:
+ *         description: Something Went Wrong — an unexpected error while resolving the window or aggregating the swipe counts.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/AnalyticsErrorResponse' }

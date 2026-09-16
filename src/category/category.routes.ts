@@ -27,7 +27,7 @@ router.post("/", requireAuth, validateBody(categorySchema), createCategory);
 router.get("/", requireAuth, getAllCategory);
 router.get("/details", requireAuth, readCategory);
 router.patch("/", requireAuth, validateBody(categoryUpdateSchema), updateCategory);
-router.post("/", requireAuth, deleteCategory);
+router.post("/soft-delete", requireAuth, validateBody(categoryBulkIdsSchema), deleteCategory);
 router.post("/hard-delete", requireAuth, validateBody(categoryBulkIdsSchema), hardDeleteCategories);
 router.patch("/status", requireAuth, validateBody(categoryBulkStatusSchema), updateCategoriesStatus);
 

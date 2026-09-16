@@ -15,7 +15,12 @@ const {
 } = preferencesControllerModule;
 const { requireAuth } = authMiddlewareModule;
 const { validateBody } = validateMiddlewareModule;
-const { preferencesCreateSchema, preferencesUpdateSchema, preferencesBulkStatusSchema } = preferencesSchemaModule;
+const {
+  preferencesCreateSchema,
+  preferencesUpdateSchema,
+  preferencesBulkIdsSchema,
+  preferencesBulkStatusSchema,
+} = preferencesSchemaModule;
 
 router.get("/", requireAuth, getPreferencescontroller);
 
@@ -35,7 +40,12 @@ router.patch(
   updatePreferencesController,
 );
 
-router.post("/", requireAuth, deletePreferencesController);
+router.post(
+  "/soft-delete",
+  requireAuth,
+  validateBody(preferencesBulkIdsSchema),
+  deletePreferencesController,
+);
 router.patch(
   "/status",
   requireAuth,

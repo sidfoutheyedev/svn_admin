@@ -396,6 +396,16 @@ const listCategories = async ({
                 total_product: {
                   $ifNull: [{ $arrayElemAt: ["$productCount.count", 0] }, 0],
                 },
+                sub_category: {
+                  $map: {
+                    input: "$subCategories",
+                    as: "subCategory",
+                    in: {
+                      category_id: "$$subCategory.category_id",
+                      category_name: "$$subCategory.category_name",
+                    },
+                  },
+                },
                 createdAt: 1,
                 updatedAt: 1,
               },

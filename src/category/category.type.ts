@@ -45,6 +45,7 @@ export interface CategoryListItem {
     parent_category_name: string | null;
     status: "Draft" | "Live" | "Hidden";
     total_product: number;
+    sub_category: { category_id: string; category_name: string }[];
     createdAt: Date;
     updatedAt: Date;
 }

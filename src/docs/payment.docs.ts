@@ -52,6 +52,10 @@
  *           minItems: 1
  *           description: "List of payment_id values."
  *           example: ["a1b2c3d4e5f6", "f6e5d4c3b2a1"]
+ *     PaymentBulkDeleteResponse:
+ *       type: object
+ *       properties:
+ *         deleted: { type: integer, description: "modifiedCount from the bulk soft-delete update." }
  *     PaymentErrorResponse:
  *       type: object
  *       properties:
@@ -169,48 +173,6 @@
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/PaymentErrorResponse' }
- *   delete:
- *     summary: Soft-delete a single payment
- *     description: >
- *       Deletes exactly one payment identified by the payment_id query parameter (not a bulk
- *       ids array). Sets is_deleted to true on the matching non-deleted payment and returns
- *       the updated document.
- *     tags: [Payments]
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: query
- *         name: payment_id
- *         required: true
- *         schema: { type: string }
- *     responses:
- *       200:
- *         description: Payment soft-deleted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 status: { type: integer, example: 200 }
- *                 message: { type: string, example: "Record Deleted Successfully" }
- *                 data: { $ref: '#/components/schemas/PaymentResponse' }
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/PaymentErrorResponse' }
- *       404:
- *         description: No non-deleted payment found for the given payment_id
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/PaymentErrorResponse' }
- *             examples:
- *               notFound:
- *                 value: { status: 404, message: "Not Found" }
- *       500:
- *         description: Something went wrong
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/PaymentErrorResponse' }
  */
 
 /**
@@ -307,13 +269,65 @@
 
 /**
  * @swagger
+ * /v1/payments/soft-delete:
+ *   post:
+ *     summary: Soft-delete payments by id (bulk, reversible)
+ *     description: >
+ *       Sets is_deleted to true on every matching, non-deleted payment. 400
+ *       with "Payment_id is required" if ids is empty after body validation.
+ *       (Previously this handler was registered on `POST /v1/payments`,
+ *       shadowed by createPayment on the same method+path and therefore
+ *       unreachable; it now has its own path.)
+ *     tags: [Payments]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PaymentBulkIdsRequest'
+ *     responses:
+ *       200:
+ *         description: Payment(s) soft-deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: integer, example: 200 }
+ *                 message: { type: string, example: "Record Deleted Successfully" }
+ *                 data: { $ref: '#/components/schemas/PaymentBulkDeleteResponse' }
+ *       400:
+ *         description: Validation error (empty/missing ids), or "Payment_id is required"
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/PaymentErrorResponse' }
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/PaymentErrorResponse' }
+ *       404:
+ *         description: No non-deleted payment matched any of the given ids
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/PaymentErrorResponse' }
+ *       500:
+ *         description: Something went wrong
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/PaymentErrorResponse' }
+ */
+
+/**
+ * @swagger
  * /v1/payments/hard-delete:
  *   post:
  *     summary: Permanently delete payments by id (bulk, irreversible)
  *     description: >
  *       Hard-deletes every payment whose payment_id is in the supplied ids array (regardless
- *       of is_deleted state). This is a permanent removal, distinct from the soft-delete
- *       DELETE /v1/payments endpoint, and does not touch the linked orders.
+ *       of is_deleted state). This is a permanent removal, distinct from the bulk soft-delete
+ *       handler above, and does not touch the linked orders.
  *     tags: [Payments]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:

@@ -81,14 +81,17 @@ describe("preference controllers", () => {
 		expect(res.status).toHaveBeenCalledWith(200);
 	});
 
-	it("deletes a preference using the query id", async () => {
+	it("deletes preferences using the body ids", async () => {
 		(preferencesService.deletePreferences as jest.Mock).mockResolvedValue(preference);
-		const req: any = { query: { preference_id: "preference-1" } };
+		const req: any = { body: { ids: ["preference-1", "preference-2"] } };
 		const res = mockRes();
 
 		await deletePreferencesController(req, res, jest.fn());
 
-		expect(preferencesService.deletePreferences).toHaveBeenCalledWith("preference-1");
+		expect(preferencesService.deletePreferences).toHaveBeenCalledWith([
+			"preference-1",
+			"preference-2",
+		]);
 		expect(res.status).toHaveBeenCalledWith(200);
 	});
 
@@ -125,7 +128,7 @@ describe("preference controllers", () => {
 		["getPreferences", getPreferencescontroller, { query: {} }],
 		["createPreferences", createPreferencesController, { body: preference }],
 		["updatePreferences", updatePreferencesController, { query: { preference_id: "id" }, body: {} }],
-		["deletePreferences", deletePreferencesController, { query: { preference_id: "id" } }],
+		["deletePreferences", deletePreferencesController, { body: { ids: ["id"] } }],
 		["getPreferencesById", getPreferencesByIdController, { query: { preference_id: "id" } }],
 		["updateMultiplePreferences", updateMultiplePreferencesController, { body: { preference_ids: ["id"], status: "Draft" } }],
 	])("returns a service error from %s", async (method, controller, req) => {

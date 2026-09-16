@@ -45,13 +45,6 @@
  *       required: [category_name, category_image]
  *       properties:
  *         category_name: { type: string, example: Electronics }
- *         parent_id:
- *           type: string
- *           nullable: true
- *           description: >
- *             Accepted by the schema but ignored by the create flow — creating
- *             sub-categories is done exclusively via `sub_category_names`
- *             below, not by passing a `parent_id` directly.
  *         category_image: { type: string, example: https://cdn.example.com/categories/electronics.png }
  *         category_description: { type: string, nullable: true, example: null }
  *         sub_category_names:
@@ -121,23 +114,27 @@
  *     CategoryListItem:
  *       type: object
  *       description: >
- *         One row of the category dashboard listing. IMPORTANT: this listing
- *         only ever contains sub-categories (rows whose parent_id is not
- *         null) — top-level parent categories themselves are excluded from
- *         `GET /v1/categories`. `total_product` counts products whose
- *         `sub_category` field equals this row's category_id.
+ *         One row of the category dashboard listing. `GET /v1/categories`
+ *         only ever returns top-level categories (documents with
+ *         parent_id: null), so `parent_category_name` never applies here and
+ *         is omitted from the response. `total_product` counts products
+ *         tagged directly to this category plus products tagged to any of
+ *         its own direct sub-categories.
  *       properties:
- *         category_id: { type: string, example: f6e5d4c3b2a1 }
- *         category_name: { type: string, example: mobiles }
- *         parent_category_name:
- *           type: string
- *           nullable: true
- *           example: electronics
- *           description: Name of the parent category, or null if the parent lookup found nothing.
- *         status: { type: string, enum: [Draft, Live, Hidden] }
- *         total_product: { type: integer, example: 4200 }
- *         createdAt: { type: string, format: date-time }
- *         updatedAt: { type: string, format: date-time }
+ *         category_id: { type: string, example: 9fd5bc371277 }
+ *         category_name: { type: string, example: vintage oversized t-shirts }
+ *         status: { type: string, enum: [Draft, Live, Hidden], example: Live }
+ *         createdAt: { type: string, format: date-time, example: '2026-09-15T07:43:46.275Z' }
+ *         updatedAt: { type: string, format: date-time, example: '2026-09-15T08:06:03.150Z' }
+ *         total_product: { type: integer, example: 1 }
+ *         sub_category:
+ *           type: array
+ *           description: Direct sub-categories of this row (one level only).
+ *           items:
+ *             type: object
+ *             properties:
+ *               category_id: { type: string, example: a576eac9b0b9 }
+ *               category_name: { type: string, example: printed t-shirts }
  *     CategoryListSummary:
  *       type: object
  *       description: >
@@ -255,14 +252,6 @@
  *             schema: { $ref: '#/components/schemas/CategoryErrorResponse' }
  *   post:
  *     summary: Create a top-level category, optionally with sub-categories in the same call
- *     description: >
- *       NOTE: `category.routes.ts` registers a second `router.post("/", ...)`
- *       further down (intended as a bulk soft-delete-by-ids route — see the
- *       "known issue" callout on this path's DELETE-shaped operation below).
- *       Because Express matches routes in registration order and this create
- *       handler always sends a response without calling `next()`, that later
- *       route is currently unreachable — every POST to this path creates a
- *       category, it never deletes one.
  *     tags: [Categories]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -389,6 +378,57 @@
  *             schema: { $ref: '#/components/schemas/CategoryErrorResponse' }
  *       404:
  *         description: No non-deleted category with that category_id.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CategoryErrorResponse' }
+ *       500:
+ *         description: Unexpected server error.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CategoryErrorResponse' }
+ */
+
+/**
+ * @swagger
+ * /v1/categories/soft-delete:
+ *   post:
+ *     summary: Soft-delete categories by id (bulk, reversible, cascades to sub-categories of the given ids)
+ *     description: >
+ *       Sets is_deleted to true on every matching, non-deleted category, and
+ *       cascades the same soft-delete to their direct sub-categories.
+ *       (Previously this handler was registered on `POST /v1/categories`,
+ *       shadowed by createCategory on the same method+path and therefore
+ *       unreachable; it now has its own path.)
+ *     tags: [Categories]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/CategoryBulkIdsRequest' }
+ *     responses:
+ *       200:
+ *         description: Categories soft-deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: integer, example: 200 }
+ *                 message: { type: string, example: Record Deleted Successfully }
+ *                 data: { $ref: '#/components/schemas/CategorySoftDeleteResponseData' }
+ *       400:
+ *         description: Body failed Zod validation (ids missing/empty), or "Category IDs are required".
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CategoryErrorResponse' }
+ *       401:
+ *         description: Missing/invalid bearer token.
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/CategoryErrorResponse' }
+ *       404:
+ *         description: None of the given ids matched a non-deleted category.
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/CategoryErrorResponse' }

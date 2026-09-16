@@ -21,8 +21,7 @@ export interface PreferencesListItem {
     category_name: string;
     category_image: string | null;
     category_description: string | null;
-    brand_ids: string[];
-    brand_names: string[];
+    brands: { brand_id: string; brand_name: string, brand_image : string }[];
     priority: number;
     is_deleted?: boolean;
     status: "Draft" | "Live" | "Hidden";

@@ -27,7 +27,12 @@ router.patch(
   validateBody(refundBulkStatusSchema),
   updateRefundsStatus,
 );
-router.post("/", requireAuth, deleteRefund);
+router.post(
+  "/soft-delete",
+  requireAuth,
+  validateBody(refundBulkIdsSchema),
+  deleteRefund,
+);
 router.post(
   "/hard-delete",
   requireAuth,

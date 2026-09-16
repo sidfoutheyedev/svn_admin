@@ -21,7 +21,7 @@ router.post("/", requireAuth, validateBody(paymentCreateSchema), createPayment);
 router.get("/", requireAuth, getAllPayments);
 router.get("/details", requireAuth, readPayment);
 router.patch("/status", requireAuth, validateBody(paymentBulkStatusSchema), updatePaymentsStatus);
-router.post("/", requireAuth, deletePayment);
+router.post("/soft-delete", requireAuth, validateBody(paymentBulkIdsSchema), deletePayment);
 router.post("/hard-delete", requireAuth, validateBody(paymentBulkIdsSchema), hardDeletePayments);
 
 export default router;

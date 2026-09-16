@@ -32,6 +32,21 @@ export interface RevenueOverviewResponse {
     onboarded_revenue: StatMetric;
 }
 
+export interface TopPerformingProduct {
+    product_id: string;
+    product_name: string;
+    product_image: string | null;
+    category_id: string | null;
+    category_name: string | null;
+    sub_category_id: string | null;
+    sub_category_name: string | null;
+    // Count of LEFT swipes ("like") within the resolved window.
+    left_swipe_count: number;
+    growth_rate: string;
+}
+
+export type TopPerformingProductsResponse = TopPerformingProduct[];
+
 export interface ApiResponse<T> {
     status: number;
     message: string;

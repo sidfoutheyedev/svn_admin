@@ -19,7 +19,7 @@ export const preferencesUpdateSchema = preferenceSchema
   .partial();
 
 export const preferencesBulkIdsSchema = z.object({
-  preference_ids: z.array(z.string().min(1)).min(1),
+  ids: z.array(z.string().min(1)).min(1),
 });
 
 export const preferencesBulkStatusSchema = z.object({

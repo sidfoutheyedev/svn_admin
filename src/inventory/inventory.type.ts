@@ -40,3 +40,14 @@ export interface ApiResponse<T> {
     message: string;
     data: T;
 }
+
+export interface InventoryTopSoldProduct {
+    product_name: string;
+    product_image: string | null;
+    growth_rate: string;
+}
+
+export interface InventoryListSummary {
+    total_stock_count: number;
+    top_sold_product: InventoryTopSoldProduct | null;
+}

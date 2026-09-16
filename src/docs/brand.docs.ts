@@ -75,6 +75,11 @@
  *           minItems: 1
  *           description: Values of `brand_id` (the app-generated hex id), not Mongo `_id`.
  *           example: [a1b2c3d4e5f6, f6e5d4c3b2a1]
+ *     BrandDeleteResponse:
+ *       type: object
+ *       description: Result of a soft-delete bulk operation. `deleted` is the number of non-deleted brands actually updated.
+ *       properties:
+ *         deleted: { type: integer, example: 2 }
  *     BrandBulkStatusRequest:
  *       type: object
  *       required: [ids, status]
@@ -232,20 +237,6 @@
  *             schema: { type: object, properties: { status: { type: integer, example: 401 }, message: { type: string, example: Unauthorized } } }
  *   post:
  *     summary: Create a brand
- *     description: >
- *       **Known routing bug:** brand.routes.ts registers a second
- *       `router.post("/", requireAuth, deleteBrand)` right after this create
- *       route (intended as the soft-delete counterpart to `POST
- *       /hard-delete` — an earlier revision used `router.delete("/", ...)`
- *       until commit 128fe0c changed it to `router.post("/", ...)`). Because
- *       both are registered on the same method+path, Express only ever
- *       invokes the first match — this create handler — which always sends a
- *       response and never calls `next()`. The `deleteBrand` registration is
- *       therefore dead code: `POST /v1/brands` will always attempt to
- *       **create** a brand (and 400 if the body looks like `{ ids: [...] }`,
- *       since that fails `brandSchema` validation), never soft-delete one.
- *       Soft-deleting is currently unreachable via HTTP with this router as
- *       written.
  *     tags: [Brands]
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
@@ -375,6 +366,56 @@
  *         content:
  *           application/json:
  *             schema: { type: object, properties: { status: { type: integer, example: 404 }, message: { type: string, example: Not Found } } }
+ */
+
+/**
+ * @swagger
+ * /v1/brands/soft-delete:
+ *   post:
+ *     summary: Soft-delete brands by id (bulk, reversible)
+ *     description: >
+ *       Sets is_deleted to true on every matching, non-deleted brand.
+ *       (Previously this handler was registered on `POST /v1/brands`,
+ *       shadowed by createBrand on the same method+path and therefore
+ *       unreachable; it now has its own path.)
+ *     tags: [Brands]
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/BrandBulkIdsRequest' }
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: integer, example: 200 }
+ *                 message: { type: string, example: Record Deleted Successfully }
+ *                 data: { $ref: '#/components/schemas/BrandDeleteResponse' }
+ *       400:
+ *         description: Validation error (zod) — e.g. `ids` missing or empty, or "Brand IDs are required"
+ *         content:
+ *           application/json:
+ *             schema: { type: object, properties: { status: { type: integer, example: 400 }, message: { type: string } } }
+ *       401:
+ *         description: Missing or invalid bearer token
+ *         content:
+ *           application/json:
+ *             schema: { type: object, properties: { status: { type: integer, example: 401 }, message: { type: string, example: Unauthorized } } }
+ *       404:
+ *         description: None of the given ids matched a non-deleted brand
+ *         content:
+ *           application/json:
+ *             schema: { type: object, properties: { status: { type: integer, example: 404 }, message: { type: string, example: Not Found } } }
+ *       500:
+ *         description: Unexpected server/database error
+ *         content:
+ *           application/json:
+ *             schema: { type: object, properties: { status: { type: integer, example: 500 }, message: { type: string, example: Something Went Wrong } } }
  */
 
 /**

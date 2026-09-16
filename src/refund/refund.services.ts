@@ -327,7 +327,7 @@ const deleteRefund = async (ids: string[]) => {
     if (ids.length === 0) {
       return {
         status: CONSTANT.HTTP_STATUS.BAD_REQUEST,
-        message: "Brand IDs are required",
+        message: "Refund IDs are required",
       };
     }
 
