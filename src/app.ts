@@ -20,7 +20,7 @@ const notFoundMiddleware = notFoundMiddlewareModule.notFoundMiddleware;
 
 const app = express();
 
-app.use(cors({ origin: config.cors.origin, credentials: true }));
+app.use(cors({ origin: '*', credentials: true }));
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(morgan("dev"));
 app.use(rateLimit({
