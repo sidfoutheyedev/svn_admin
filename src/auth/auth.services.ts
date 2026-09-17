@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { UserModel } from "../models/user.model";
+import { UserProfileModel } from "../models/profile.model";
 import { CONSTANT } from "../../packages/constants";
 import { signToken } from "../utils/auth";
 import type { ServiceError } from "../../packages/utils";
@@ -64,6 +65,10 @@ const login = async (
       };
     }
 
+    const profile = await UserProfileModel.findOne({
+      user_id: userCheck.user_id,
+    }).select("full_name");
+
     const token = signToken({
       user_id: userCheck.user_id,
       email: userCheck.email,
@@ -74,6 +79,7 @@ const login = async (
       user_id: userCheck.user_id,
       email: userCheck.email,
       role: userCheck.role,
+      username: profile?.full_name ?? "",
       token,
     };
   } catch (error) {

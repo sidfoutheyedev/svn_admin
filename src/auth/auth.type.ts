@@ -7,13 +7,17 @@ export interface UserData {
     user_id: string;
     email: string;
     role: string;
+    username: string;
     password?: string;
     lastlogin?: Date;
     provider?: string;
     token?: string;
 }
 
-export type UserRegisterResponse = Omit<UserData, "password" | "token">;
+export type UserRegisterResponse = Omit<
+    UserData,
+    "password" | "token" | "username"
+>;
 export type LoginResponse = Omit<UserData, "password">;
 
 export interface ApiResponse<T> {
