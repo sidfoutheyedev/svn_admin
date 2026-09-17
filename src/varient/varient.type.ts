@@ -29,6 +29,13 @@ export interface VarientResponse extends VarientData {
     updatedAt: Date;
 }
 
+export interface VarientListSummary {
+    total_varient: number;
+    total_live_varient: number;
+    total_draft_vatient: number;
+    total_hidden_varient: number;
+}
+
 export interface ApiResponse<T> {
     status: number;
     message: string;

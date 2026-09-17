@@ -84,6 +84,17 @@
  *         is_deleted: { type: boolean, example: false }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
+ *     VarientListSummary:
+ *       type: object
+ *       description: >
+ *         Status counts over the same is_deleted/query scope as the listing,
+ *         independent of the `status` filter itself (so the summary always
+ *         reflects every status, even when `status` narrows `items`).
+ *       properties:
+ *         total_varient: { type: integer, example: 42 }
+ *         total_live_varient: { type: integer, example: 30 }
+ *         total_draft_vatient: { type: integer, example: 8 }
+ *         total_hidden_varient: { type: integer, example: 4 }
  *     VarientPaginatedResponse:
  *       type: object
  *       properties:
@@ -94,6 +105,7 @@
  *         page: { type: integer, example: 1 }
  *         limit: { type: integer, example: 20 }
  *         totalPages: { type: integer, example: 3 }
+ *         summary: { $ref: '#/components/schemas/VarientListSummary' }
  *     VarientHardDeleteResult:
  *       type: object
  *       properties:
@@ -110,7 +122,7 @@
  *           description: Count of non-deleted documents whose status was changed (updateMany.modifiedCount). Can be 0 if none of the ids matched - this endpoint does not 404.
  *     VarientBulkDeleteResponse:
  *       type: object
- *       description: What deleteVarient (varient.services.ts) returns - currently unreachable over HTTP, see the implementation note above /v1/varients.
+ *       description: What deleteVarient (varient.services.ts) returns, via POST /v1/varients/soft-delete.
  *       properties:
  *         deleted:
  *           type: integer

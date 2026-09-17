@@ -9,6 +9,7 @@ import type {
     VarientBulkIdsRequest,
     VarientBulkStatusRequest,
     VarientCreateRequest,
+    VarientListSummary,
     VarientResponse,
     VarientUpdateRequest,
 } from "./varient.type";
@@ -213,7 +214,7 @@ export const readVarient = async (
 
 export const getAllVarient = async (
     req: Request<{}, {}, {}, PaginationQuery & { status?: string }>,
-    res: Response<ApiResponse<PaginatedResult<VarientResponse>>>,
+    res: Response<ApiResponse<PaginatedResult<VarientResponse> & { summary: VarientListSummary }>>,
     next: NextFunction
 ) => {
     try {

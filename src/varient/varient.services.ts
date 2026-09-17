@@ -7,6 +7,7 @@ import type {
     VarientCreateRequest,
     VarientUpdateRequest,
     VarientBulkStatusRequest,
+    VarientListSummary,
 } from "./varient.type";
 
 const findVarientByName = (varient_name: string) =>
@@ -186,29 +187,53 @@ const listVarients = async ({
     status
 }: PaginationParams & { query?: string; status?: string }) => {
     try {
-        const filter: Record<string, unknown> = { is_deleted: false };
+        // Shared by the list and the status summary — everything except the
+        // status filter itself, so the summary always reflects all statuses
+        // (search still narrows it, matching the list's own search scope).
+        const searchFilter: Record<string, unknown> = { is_deleted: false };
 
         if (query) {
-            filter.$or = [
+            searchFilter.$or = [
                 { varient_name: { $regex: `^${query}`, $options: "i" } },
                 { varient_values: { $regex: query, $options: "i" } },
             ];
         }
 
+        const filter: Record<string, unknown> = { ...searchFilter };
+
         if (status) {
             filter.status = { $regex: `^${status}$`, $options: "i" };
         }
 
-        const [items, total] = await Promise.all([
+        const [items, total, statusCounts] = await Promise.all([
             VarientModel.find(filter)
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit)
                 .lean(),
             VarientModel.countDocuments(filter),
+            VarientModel.aggregate([
+                { $match: searchFilter },
+                { $group: { _id: "$status", count: { $sum: 1 } } },
+            ]),
         ]);
 
-        return buildPaginatedResult(items, total, page, limit);
+        const countByStatus = new Map<string, number>(
+            statusCounts.map((s: { _id: string; count: number }) => [s._id, s.count]),
+        );
+
+        const total_live_varient = countByStatus.get("Live") ?? 0;
+        const total_draft_vatient = countByStatus.get("Draft") ?? 0;
+        const total_hidden_varient = countByStatus.get("Hidden") ?? 0;
+
+        const summary: VarientListSummary = {
+            total_varient: total_live_varient + total_draft_vatient + total_hidden_varient,
+            total_live_varient,
+            total_draft_vatient,
+            total_hidden_varient,
+        };
+
+        return { ...buildPaginatedResult(items, total, page, limit), summary };
     } catch (error) {
         return {
             status: CONSTANT.HTTP_STATUS.INTERNAL_SERVER_ERROR,
