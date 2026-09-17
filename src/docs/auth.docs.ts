@@ -59,6 +59,10 @@
  *         user_id: { type: string, example: 5f3a1b9c02d4 }
  *         email: { type: string, example: admin@svn.com }
  *         role: { type: string, enum: [admin, user], example: admin }
+ *         username:
+ *           type: string
+ *           description: The user's UserProfile.full_name. Empty string when the user has no profile document (not null).
+ *           example: Jane Doe
  *         token:
  *           type: string
  *           description: JWT signed with { user_id, email, role }, expires in 1 day.
