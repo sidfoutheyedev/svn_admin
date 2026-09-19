@@ -17,8 +17,6 @@ export const orderCreateSchema = z.object({
             })
         )
         .min(1),
-    // Optional — omit for an order placed with no payment recorded yet
-    // (e.g. COD awaiting collection).
     payment: orderPaymentInputSchema.optional(),
 });
 
