@@ -64,6 +64,32 @@ describe("preferencesService", () => {
 		);
 	});
 
+	it("filters preferences by status in the aggregation pipeline", async () => {
+		(PreferencesModel.aggregate as jest.Mock).mockResolvedValue([
+			{ data: [record], total: 1 },
+		]);
+
+		await preferencesService.getPreferences({
+			page: 1,
+			limit: 10,
+			skip: 0,
+			status: "Live",
+		});
+
+		expect(PreferencesModel.aggregate).toHaveBeenCalledWith(
+			expect.arrayContaining([
+				expect.objectContaining({
+					$match: expect.objectContaining({
+						status: {
+							$regex: "^Live$",
+							$options: "i",
+						},
+					}),
+				}),
+			]),
+		);
+	});
+
 	it("creates a preference with a generated id and Draft default status", async () => {
 		(PreferencesModel.findOne as jest.Mock).mockResolvedValue(null);
 		(CategoryModel.findOne as jest.Mock).mockResolvedValue(mainCategory);

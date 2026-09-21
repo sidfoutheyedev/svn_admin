@@ -3,6 +3,7 @@ import type { StatMetric } from "../../packages/utils";
 export type ProductType = "PHYSICAL" | "AFFILIATE";
 export type ProductStatus = "Live" | "Draft" | "Hidden";
 export type Gender = "male" | "female" | "others";
+export type Style = "Topwear" | "Bottomwear" | "Dresses" | "Sets & Co-Ords" | "Footwear" | "Accessories" | "Innerwear";
 
 export interface ProductVariantInput {
     variant_combination?: string[];
@@ -18,6 +19,7 @@ export interface ProductCreateRequest {
     product_name: string;
     brand_id: string;
     category: string;
+    style: Style;
     sub_category: string;
     GST?: string;
     product_description: string;
@@ -52,6 +54,7 @@ export interface ProductResponse {
     category: string;
     sub_category: string;
     GST: string | null;
+    style: Style;
     product_description: string;
     product_type: ProductType;
     inventory_managed: boolean;
@@ -67,7 +70,7 @@ export interface ProductResponse {
 
 
 export interface ProductUpdateRequest
-    extends Partial<Omit<ProductCreateRequest, "variants" | "product_type" | "affiliate_link">> {}
+    extends Partial<Omit<ProductCreateRequest, "variants" | "product_type" | "affiliate_link">> { }
 
 
 export interface ProductVariantUpdateRequest {
@@ -148,6 +151,7 @@ export interface ProductDetail {
     product_name: string;
     product_description: string;
     GST: string | null;
+    style: Style | null;
     product_type: ProductType;
     inventory_managed: boolean;
     affiliate_link: string | null;

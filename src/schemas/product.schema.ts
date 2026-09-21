@@ -22,8 +22,7 @@ export const productVariantInputSchema = baseVariantInputSchema.refine(
     }
 );
 
-// stock_on_hand and sku are excluded — stock only ever moves through the
-// inventory ledger, and sku codes are fixed at variant-creation time.
+
 export const productVariantUpdateSchema = baseVariantInputSchema
     .omit({ sku: true, stock_on_hand: true })
     .partial();
@@ -35,8 +34,7 @@ const productBaseSchema = z.object({
     sub_category: z.string().min(1),
     GST: z.string().optional(),
     product_description: z.string().min(1),
-    // Optional — when omitted it's inferred from affiliate_link
-    // (present -> AFFILIATE, absent -> PHYSICAL).
+    style : z.enum(["Topwear","Bottomwear","Dresses","Sets & Co-Ords","Footwear","Accessories","Innerwear"]),
     product_type: z.enum(["PHYSICAL", "AFFILIATE"]).optional(),
     gender: z.enum(["male", "female", "others"]),
     affiliate_link: z.string().url().optional(),

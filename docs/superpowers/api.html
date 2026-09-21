@@ -725,6 +725,7 @@
           <li><a href="#product-csv-sample"><span class="m get">GET</span> CSV sample</a></li>
           <li><a href="#product-csv-import"><span class="m post">POST</span> Import CSV</a></li>
           <li><a href="#product-csv-export"><span class="m get">GET</span> Export CSV</a></li>
+          <li><a href="#product-recommendation-csv"><span class="m get">GET</span> Recommendation CSV</a></li>
         </ul>
         <a class="nav-module" href="#inventory">
           <span class="dot"></span> Inventory
@@ -3532,7 +3533,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
 
       <section class="module-section" id="product">
         <h2 class="module-title">Product</h2>
-        <p class="module-desc">The catalog core — products, their purchasable variants, and CSV bulk import/export. 15
+        <p class="module-desc">The catalog core — products, their purchasable variants, and CSV bulk import/export. 16
           routes across three groups, all in <code>src/product/product.routes.ts</code>, mounted at
           <code>/v1/products</code>. This is the largest and least internally-consistent module on this page; the
           callouts below aren't nitpicks, they're things you'll hit in practice wiring a client against it.</p>
@@ -3540,7 +3541,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
         <div class="auth-banner">
           <span>🔒</span>
           <div>
-            <strong>Every route in this module requires authentication.</strong>
+            <strong>Every route in this module requires authentication</strong> — except the <a
+              href="#product-recommendation-csv">recommendation CSV export</a>, which is public.
             Send <span class="k">Authorization: Bearer &lt;token&gt;</span>. The token must decode to a user with <span
               class="k">role: "admin"</span> — anything else returns <span class="k">401 Unauthorized</span> (see <a
               href="#auth">Auth</a>).
@@ -3596,6 +3598,15 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
                 <td class="name">category / sub_category<span class="req">required</span></td>
                 <td class="type">string</td>
                 <td>also never validated against Category</td>
+              </tr>
+              <tr>
+                <td class="name">style<span class="req">required</span></td>
+                <td class="type">string (enum)</td>
+                <td>one of <code>Topwear</code>, <code>Bottomwear</code>, <code>Dresses</code>,
+                  <code>Sets &amp; Co-Ords</code>, <code>Footwear</code>, <code>Accessories</code>,
+                  <code>Innerwear</code> — a fixed list, independent of the category tree. Stored as
+                  <code>product_style</code> but always sent and returned as <code>style</code>. A missing or unlisted
+                  value is a <code>400</code></td>
               </tr>
               <tr>
                 <td class="name">product_description<span class="req">required</span></td>
@@ -3688,6 +3699,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
   <span class="tok-key">"brand_id"</span><span class="tok-punc">:</span> <span class="tok-str">"c33afe8ebcff"</span><span class="tok-punc">,</span>
   <span class="tok-key">"category"</span><span class="tok-punc">:</span> <span class="tok-str">"2e3be314e160"</span><span class="tok-punc">,</span>
   <span class="tok-key">"sub_category"</span><span class="tok-punc">:</span> <span class="tok-str">"4ef9dd471f5c"</span><span class="tok-punc">,</span>
+  <span class="tok-key">"style"</span><span class="tok-punc">:</span> <span class="tok-str">"Topwear"</span><span class="tok-punc">,</span>
   <span class="tok-key">"GST"</span><span class="tok-punc">:</span> <span class="tok-str">"5%"</span><span class="tok-punc">,</span>
   <span class="tok-key">"product_description"</span><span class="tok-punc">:</span> <span class="tok-str">"Lorem ipsum is placeholder text&#8230;"</span><span class="tok-punc">,</span>
   <span class="tok-key">"gender"</span><span class="tok-punc">:</span> <span class="tok-str">"male"</span><span class="tok-punc">,</span>
@@ -3721,6 +3733,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
     <span class="tok-key">"product_name"</span><span class="tok-punc">:</span> <span class="tok-str">"Mens T-Shirt"</span><span class="tok-punc">,</span>
     <span class="tok-key">"brand_id"</span><span class="tok-punc">:</span> <span class="tok-str">"c33afe8ebcff"</span><span class="tok-punc">,</span>
     <span class="tok-key">"category"</span><span class="tok-punc">:</span> <span class="tok-str">"2e3be314e160"</span><span class="tok-punc">,</span>
+    <span class="tok-key">"style"</span><span class="tok-punc">:</span> <span class="tok-str">"Topwear"</span><span class="tok-punc">,</span>
     <span class="tok-key">"GST"</span><span class="tok-punc">:</span> <span class="tok-str">"5%"</span><span class="tok-punc">,</span>
     <span class="tok-key">"product_type"</span><span class="tok-punc">:</span> <span class="tok-str">"PHYSICAL"</span><span class="tok-punc">,</span>
     <span class="tok-key">"inventory_managed"</span><span class="tok-punc">:</span> <span class="tok-bool">true</span><span class="tok-punc">,</span>
@@ -3855,6 +3868,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
         <span class="tok-key">"product_id"</span><span class="tok-punc">:</span> <span class="tok-str">"2ac883d8e609"</span><span class="tok-punc">,</span>
         <span class="tok-key">"product_name"</span><span class="tok-punc">:</span> <span class="tok-str">"Mens T-Shirt"</span><span class="tok-punc">,</span>
         <span class="tok-key">"GST"</span><span class="tok-punc">:</span> <span class="tok-str">"29ABCDE1234F1Z5"</span><span class="tok-punc">,</span>
+        <span class="tok-key">"style"</span><span class="tok-punc">:</span> <span class="tok-str">"Topwear"</span><span class="tok-punc">,</span>
         <span class="tok-key">"product_description"</span><span class="tok-punc">:</span> <span class="tok-str">"Lorem ipsum is placeholder text&#8230;"</span><span class="tok-punc">,</span>
         <span class="tok-key">"product_type"</span><span class="tok-punc">:</span> <span class="tok-str">"PHYSICAL"</span><span class="tok-punc">,</span>
         <span class="tok-key">"gender"</span><span class="tok-punc">:</span> <span class="tok-str">"male"</span><span class="tok-punc">,</span>
@@ -3963,6 +3977,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
                 <th>Notes</th>
               </tr>
               <tr>
+                <td class="name">style</td>
+                <td class="type">string (enum) | null</td>
+                <td>same values as <a href="#product-create">Create product</a>. <code>null</code> for products created
+                  before the field existed, until one is set with <a href="#product-update">Update product</a></td>
+              </tr>
+              <tr>
                 <td class="name">brand / category / sub_category</td>
                 <td class="type">{id,name} | null</td>
                 <td><code>null</code> if the stored id doesn't resolve — create/update never check these ids exist</td>
@@ -4013,6 +4033,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
   <span class="tok-key">"data"</span><span class="tok-punc">:</span> {
     <span class="tok-key">"product_id"</span><span class="tok-punc">:</span> <span class="tok-str">"f3a91c02b6e4"</span><span class="tok-punc">,</span>
     <span class="tok-key">"product_name"</span><span class="tok-punc">:</span> <span class="tok-str">"Aero Pro Headphones"</span><span class="tok-punc">,</span>
+    <span class="tok-key">"style"</span><span class="tok-punc">:</span> <span class="tok-str">"Accessories"</span><span class="tok-punc">,</span>
     <span class="tok-key">"product_type"</span><span class="tok-punc">:</span> <span class="tok-str">"PHYSICAL"</span><span class="tok-punc">,</span>
     <span class="tok-key">"inventory_managed"</span><span class="tok-punc">:</span> <span class="tok-bool">true</span><span class="tok-punc">,</span>
     <span class="tok-key">"status"</span><span class="tok-punc">:</span> <span class="tok-str">"Live"</span><span class="tok-punc">,</span>
@@ -4072,7 +4093,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
             <h4 class="sub">Request body</h4>
             <p style="font-size:13px; color:var(--text-dim); margin:0 0 10px;">Every <a href="#product-create">Create
                 product</a> field except <code>product_type</code>/<code>affiliate_link</code>/<code>variants</code>,
-              all optional. <code>varient_ids</code> is re-validated against <a href="#varient">Variant</a> on every
+              all optional, including <code>style</code>. <code>varient_ids</code> is re-validated against <a href="#varient">Variant</a> on every
               update.</p>
 
             <div class="code-grid">
@@ -4608,17 +4629,17 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs&#8230;</pre>
               <code>Content-Disposition: attachment; filename="products-sample.csv"</code>.</p>
 
             <p style="font-size:13px; color:var(--text-dim); margin:0 0 10px;">Columns:
-              <code>product_group_id, product_name, brand_id, category, sub_category, GST, product_description, product_type, affiliate_link, gender, tag, search_tag, varient_ids, status, variant_combination, sku, price, discount_price, stock_on_hand, product_images, is_default</code>.
+              <code>product_group_id, product_name, brand_id, category, sub_category, style, GST, product_description, product_type, affiliate_link, gender, tag, search_tag, varient_ids, status, variant_combination, sku, price, discount_price, stock_on_hand, product_images, is_default</code>.
               The sample body has 3 rows: two sharing <code>product_group_id="P1"</code> (one product, two variants) and
               one AFFILIATE example under <code>"P2"</code> (empty
               <code>sku</code>/<code>GST</code>/<code>discount_price</code>/<code>stock_on_hand</code>).</p>
 
             <div class="code-block">
               <div class="cb-head"><span>Response</span> <span class="status-pill ok">200 OK — text/csv</span></div>
-              <pre>product_group_id,product_name,brand_id,category,sub_category,GST,product_description,product_type,affiliate_link,gender,tag,search_tag,varient_ids,status,variant_combination,sku,price,discount_price,stock_on_hand,product_images,is_default
-P1,Aero Pro Headphones,c33afe8ebcff,cat_01hxyz,cat_02abcd,18%,Active noise cancelling,PHYSICAL,,others,audio|travel,headphones,a13f9c2d6e01,Live,Black,AERO-BLK-001|AERO-BLK-002,199.99,,2,,true
-P1,Aero Pro Headphones,c33afe8ebcff,cat_01hxyz,cat_02abcd,18%,Active noise cancelling,PHYSICAL,,others,audio|travel,headphones,a13f9c2d6e01,Live,Red,AERO-RED-001,199.99,,1,,false
-P2,Runner Trail Shoes,ded52b2667f4,cat_03efgh,,,Trail-ready outsole,AFFILIATE,https://levis.com/affilitate,male,,,,Live,,,89.00,,,,</pre>
+              <pre>product_group_id,product_name,brand_id,category,sub_category,style,GST,product_description,product_type,affiliate_link,gender,tag,search_tag,varient_ids,status,variant_combination,sku,price,discount_price,stock_on_hand,product_images,is_default
+P1,Aero Pro Headphones,c33afe8ebcff,cat_01hxyz,cat_02abcd,Accessories,18%,Active noise cancelling,PHYSICAL,,others,audio|travel,headphones,a13f9c2d6e01,Live,Black,AERO-BLK-001|AERO-BLK-002,199.99,,2,,true
+P1,Aero Pro Headphones,c33afe8ebcff,cat_01hxyz,cat_02abcd,Accessories,18%,Active noise cancelling,PHYSICAL,,others,audio|travel,headphones,a13f9c2d6e01,Live,Red,AERO-RED-001,199.99,,1,,false
+P2,Runner Trail Shoes,ded52b2667f4,cat_03efgh,cat_04ijkl,Footwear,,Trail-ready outsole,AFFILIATE,https://levis.com/affilitate,male,,,,Live,,,89.00,,,,</pre>
             </div>
           </div>
         </article>
@@ -4675,7 +4696,7 @@ P2,Runner Trail Shoes,ded52b2667f4,cat_03efgh,,,Trail-ready outsole,AFFILIATE,ht
                 itself is malformed (unparseable structure), the whole upload is rejected with one <code>row: 0</code>
                 error and nothing is created. Otherwise: a row missing <code>product_group_id</code> or a numeric
                 <code>price</code> fails alone; the first row of a new group must supply all of
-                <code>product_name, brand_id, category, sub_category, product_description, gender</code>; every later
+                <code>product_name, brand_id, category, sub_category, style, product_description, gender</code>; every later
                 row in the same group must repeat identical product-level values or that single row errors (a mismatch
                 message) without affecting the rest of the group or file.
               </div>
@@ -4738,8 +4759,76 @@ file: products.csv</pre>
               <div class="cb-head"><span>Response</span> <span class="status-pill ok">200 OK — text/csv</span></div>
               <pre>Content-Disposition: attachment; filename="products-export.csv"
 
-product_group_id,product_name,brand_id,category,sub_category,GST,product_description,product_type,affiliate_link,gender,tag,search_tag,varient_ids,status,variant_combination,sku,price,discount_price,stock_on_hand,product_images,is_default
-f3a91c02b6e4,Aero Pro Headphones,c33afe8ebcff,cat_01hxyz,cat_02abcd,18%,Active noise cancelling,PHYSICAL,,others,audio|travel,headphones,a13f9c2d6e01,Live,Black,AERO-BLK-001|AERO-BLK-002,199.99,,2,,true</pre>
+product_group_id,product_name,brand_id,category,sub_category,style,GST,product_description,product_type,affiliate_link,gender,tag,search_tag,varient_ids,status,variant_combination,sku,price,discount_price,stock_on_hand,product_images,is_default
+f3a91c02b6e4,Aero Pro Headphones,c33afe8ebcff,cat_01hxyz,cat_02abcd,Accessories,18%,Active noise cancelling,PHYSICAL,,others,audio|travel,headphones,a13f9c2d6e01,Live,Black,AERO-BLK-001|AERO-BLK-002,199.99,,2,,true</pre>
+            </div>
+          </div>
+        </article>
+
+        <!-- Recommendation CSV -->
+        <article class="endpoint issue" id="product-recommendation-csv">
+          <div class="endpoint-head">
+            <span class="method get">GET</span>
+            <span class="path">/v1/products/recommendation/csv</span>
+            <div class="badge-row"><span class="badge">No auth</span></div>
+          </div>
+          <div class="endpoint-body">
+            <p class="summary">Downloads a flat feed for the recommendation/embedding pipeline — one row per non-deleted
+              product, built from that product's <code>is_default</code> variant. Like the other CSV routes it isn't the
+              JSON envelope: <code>Content-Type: text/csv</code>,
+              <code>Content-Disposition: attachment; filename="products-recommendation-export.csv"</code>.</p>
+
+            <div class="issue-note">
+              <span class="ico">&#9888;</span>
+              <div><strong>Not authenticated.</strong> Unlike every other route in this module, this one is registered
+                without <code>requireAuth</code> (<code>router.get("/recommendation/csv", getallProductRecommendationcontroller)</code>),
+                so anyone who can reach the API can download the live catalog — names, brands, prices, stock status and
+                image URLs. Documented as written — worth confirming whether that's deliberate (e.g. a recommender
+                service pulling it without a token).</div>
+            </div>
+
+            <h4 class="sub">Columns</h4>
+            <table class="params">
+              <tr>
+                <th>Column</th>
+                <th>Notes</th>
+              </tr>
+              <tr>
+                <td class="name">product_id, title, gender</td>
+                <td><code>title</code> is <code>product_name</code></td>
+              </tr>
+              <tr>
+                <td class="name">brand, category, subcategory</td>
+                <td>names, resolved from the stored ids — empty string if an id doesn't resolve</td>
+              </tr>
+              <tr>
+                <td class="name">style</td>
+                <td>the product's own <code>style</code>. Products created before that field existed fall back to their
+                  category name</td>
+              </tr>
+              <tr>
+                <td class="name">price, in_stock, is_active, primary_image</td>
+                <td>from the default variant: <code>in_stock</code> is <code>stock_on_hand &gt; 0</code>,
+                  <code>primary_image</code> is the first entry of its <code>product_images</code></td>
+              </tr>
+              <tr>
+                <td class="name">embedding_text</td>
+                <td><code>{title}. {subcategory}, {variant_combination…}, {tag…}, {brand}</code>, skipping empty pieces
+                </td>
+              </tr>
+            </table>
+
+            <div class="issue-note">
+              <span class="ico">ℹ</span>
+              <div><strong>A product with no default variant produces no row.</strong> Also uses
+                <code>is_deleted: false</code> exactly, like <a href="#product-csv-export">Export CSV</a>, so a legacy
+                document with the field unset is excluded.</div>
+            </div>
+
+            <div class="code-block">
+              <div class="cb-head"><span>Response</span> <span class="status-pill ok">200 OK — text/csv</span></div>
+              <pre>product_id,title,brand,gender,category,subcategory,style,price,in_stock,is_active,primary_image,embedding_text
+f3a91c02b6e4,Aero Pro Headphones,Levis,others,headphones,over-ear,Accessories,199.99,true,true,https://cdn.example.com/aero.jpg,"Aero Pro Headphones. over-ear, Black, audio, travel, Levis"</pre>
             </div>
           </div>
         </article>

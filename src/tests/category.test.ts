@@ -4,6 +4,21 @@ import {
   categoryBulkIdsSchema,
   categoryBulkStatusSchema,
 } from '../schemas/category.schema';
+import { CategoryModel } from '../models/category.model';
+import { categoryService } from '../category/category.services';
+
+jest.mock('../models/category.model', () => ({
+  CategoryModel: {
+    findOne: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+    updateMany: jest.fn(),
+    find: jest.fn(),
+    create: jest.fn(),
+    deleteMany: jest.fn(),
+    aggregate: jest.fn(),
+    collection: { name: 'categories' },
+  },
+}));
 
 // No supertest / mongodb-memory-server is configured in this project yet, so
 // these cover the pure, network-free validation logic (mirrors auth.test.ts).
@@ -154,6 +169,142 @@ describe('categoryUpdateSchema', () => {
   it('rejects a non-string category_description when provided', () => {
     const result = categoryUpdateSchema.safeParse({ category_description: 99 });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('categoryService.updateCategory', () => {
+  it('ignores sub_category arrays when updating a category', async () => {
+    (CategoryModel.findOne as jest.Mock).mockResolvedValue({
+      category_id: 'cat-1',
+      category_name: 'Phones',
+      parent_id: null,
+      is_deleted: false,
+      status: 'Draft',
+    });
+    (CategoryModel.find as jest.Mock).mockReturnValue({
+      select: jest.fn().mockResolvedValue([]),
+    });
+
+    (CategoryModel.findOneAndUpdate as jest.Mock).mockResolvedValue({
+      category_id: 'cat-1',
+      category_name: 'Phones',
+      status: 'Live',
+    });
+
+    await categoryService.updateCategory('cat-1', {
+      category_name: 'Phones',
+      status: 'Live',
+      sub_category: [{ category_id: 'sub-1', category_name: 'Apple' }],
+      sub_category_names: [],
+    } as any);
+
+    expect(CategoryModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { category_id: 'cat-1', is_deleted: false },
+      { category_name: 'Phones', status: 'Live' },
+      { new: true, runValidators: true },
+    );
+  });
+
+  it('creates only new subcategories from sub_category_names on update', async () => {
+    (CategoryModel.findOne as jest.Mock).mockResolvedValue({
+      category_id: 'cat-1',
+      category_name: 'Phones',
+      parent_id: null,
+      is_deleted: false,
+      status: 'Draft',
+    });
+    (CategoryModel.find as jest.Mock).mockReturnValue({
+      select: jest.fn().mockResolvedValue([]),
+    });
+
+    (CategoryModel.findOneAndUpdate as jest.Mock).mockResolvedValue({
+      category_id: 'cat-1',
+      category_name: 'Phones',
+      status: 'Live',
+    });
+
+    (CategoryModel.create as jest.Mock).mockResolvedValue({
+      category_id: 'sub-1',
+      category_name: 'Apple',
+      parent_id: 'cat-1',
+      is_deleted: false,
+    });
+
+    await categoryService.updateCategory('cat-1', {
+      category_name: 'Phones',
+      status: 'Live',
+      sub_category_names: ['Apple', 'Samsung'],
+    } as any);
+
+    expect(CategoryModel.create).toHaveBeenCalledTimes(2);
+    expect(CategoryModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category_name: 'Apple',
+        parent_id: 'cat-1',
+      }),
+    );
+    expect(CategoryModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category_name: 'Samsung',
+        parent_id: 'cat-1',
+      }),
+    );
+  });
+});
+
+describe('categoryService.listCategories', () => {
+  it('projects category_image in the list response', async () => {
+    (CategoryModel.aggregate as jest.Mock).mockResolvedValue([
+      {
+        items: [
+          {
+            category_id: 'cat-1',
+            category_name: 'Phones',
+            category_image: 'https://cdn.example.com/phones.png',
+            status: 'Live',
+            total_product: 2,
+            sub_category: [],
+            createdAt: '2024-01-01',
+            updatedAt: '2024-01-02',
+          },
+        ],
+        total: [{ count: 1 }],
+        statusCounts: [{ _id: 'Live', count: 1 }],
+      },
+    ]);
+
+    const result = await categoryService.listCategories({
+      page: 1,
+      limit: 10,
+      skip: 0,
+      query: '',
+      status: 'Live',
+    });
+
+    expect(CategoryModel.aggregate).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          $facet: expect.objectContaining({
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                $project: expect.objectContaining({
+                  category_image: 1,
+                }),
+              }),
+            ]),
+          }),
+        }),
+      ]),
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            category_image: 'https://cdn.example.com/phones.png',
+          }),
+        ],
+      }),
+    );
   });
 });
 

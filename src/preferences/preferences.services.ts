@@ -16,7 +16,8 @@ const getPreferences = async ({
   page,
   limit,
   query,
-}: PaginationParams & { query?: string }) => {
+  status,
+}: PaginationParams & { query?: string; status?: string }) => {
   try {
     const skip = (page - 1) * limit;
 
@@ -24,6 +25,14 @@ const getPreferences = async ({
       {
         $match: {
           is_deleted: false,
+          ...(status?.trim()
+            ? {
+                status: {
+                  $regex: `^${status.trim()}$`,
+                  $options: "i",
+                },
+              }
+            : {}),
         },
       },
       {
@@ -76,7 +85,7 @@ const getPreferences = async ({
               in: {
                 brand_id: "$$brand.brand_id",
                 brand_name: "$$brand.brand_name",
-                brand_image : "$$brand.brand_image"
+                brand_image: "$$brand.brand_image"
               },
             },
           },
@@ -89,25 +98,25 @@ const getPreferences = async ({
       },
       ...(query
         ? [
-            {
-              $match: {
-                $or: [
-                  {
-                    category_name: {
-                      $regex: escapeRegex(query),
-                      $options: "i",
-                    },
+          {
+            $match: {
+              $or: [
+                {
+                  category_name: {
+                    $regex: escapeRegex(query),
+                    $options: "i",
                   },
-                  {
-                    "brands.brand_name": {
-                      $regex: escapeRegex(query),
-                      $options: "i",
-                    },
+                },
+                {
+                  "brands.brand_name": {
+                    $regex: escapeRegex(query),
+                    $options: "i",
                   },
-                ],
-              },
+                },
+              ],
             },
-          ]
+          },
+        ]
         : []),
       {
         $facet: {

@@ -12,7 +12,7 @@ import type {
 } from "./preferences.type";
 
 export const getPreferencescontroller = async (
-  req: Request<{}, {}, {}, PaginationQuery>,
+  req: Request<{}, {}, {}, PaginationQuery & {status? : string}>,
   res: Response<ApiResponse<PaginatedResult<PreferencesResponse>>>,
   next: NextFunction,
 ) => {
@@ -23,6 +23,7 @@ export const getPreferencescontroller = async (
       limit,
       skip,
       query: req.query.query,
+      status: req.query.status,
     });
 
     if (isServiceError(data)) {

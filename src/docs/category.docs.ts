@@ -123,6 +123,7 @@
  *       properties:
  *         category_id: { type: string, example: 9fd5bc371277 }
  *         category_name: { type: string, example: vintage oversized t-shirts }
+ *         category_image: { type: string, nullable: true, example: https://cdn.example.com/categories/vintage.png }
  *         status: { type: string, enum: [Draft, Live, Hidden], example: Live }
  *         createdAt: { type: string, format: date-time, example: '2026-09-15T07:43:46.275Z' }
  *         updatedAt: { type: string, format: date-time, example: '2026-09-15T08:06:03.150Z' }

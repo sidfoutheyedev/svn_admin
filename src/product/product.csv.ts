@@ -13,6 +13,7 @@ export const CSV_COLUMNS = [
     "brand_id",
     "category",
     "sub_category",
+    "style",
     "GST",
     "product_description",
     "product_type",
@@ -52,6 +53,7 @@ const PRODUCT_LEVEL_KEYS = [
     "brand_id",
     "category",
     "sub_category",
+    "style",
     "GST",
     "product_description",
     "product_type",
@@ -68,6 +70,7 @@ const REQUIRED_PRODUCT_FIELDS = [
     "brand_id",
     "category",
     "sub_category",
+    "style",
     "product_description",
     "gender",
 ] as const;
@@ -120,6 +123,7 @@ export const parseProductsCsv = (buffer: Buffer): { products: ParsedProductGroup
             brand_id: toOptionalString(record.brand_id),
             category: toOptionalString(record.category),
             sub_category: toOptionalString(record.sub_category),
+            style: toOptionalString(record.style),
             GST: toOptionalString(record.GST),
             product_description: toOptionalString(record.product_description),
             product_type: toOptionalString(record.product_type),
@@ -189,6 +193,7 @@ export const buildSampleProductsCsv = (): string => {
             "REPLACE_WITH_BRAND_ID",
             "REPLACE_WITH_CATEGORY_ID",
             "REPLACE_WITH_SUB_CATEGORY_ID",
+            "Topwear",
             "29ABCDE1234F1Z5",
             "A comfortable cotton t-shirt",
             "PHYSICAL",
@@ -212,6 +217,7 @@ export const buildSampleProductsCsv = (): string => {
             "REPLACE_WITH_BRAND_ID",
             "REPLACE_WITH_CATEGORY_ID",
             "REPLACE_WITH_SUB_CATEGORY_ID",
+            "Topwear",
             "29ABCDE1234F1Z5",
             "A comfortable cotton t-shirt",
             "PHYSICAL",
@@ -235,6 +241,7 @@ export const buildSampleProductsCsv = (): string => {
             "REPLACE_WITH_BRAND_ID",
             "REPLACE_WITH_CATEGORY_ID",
             "REPLACE_WITH_SUB_CATEGORY_ID",
+            "Footwear",
             "",
             "An affiliate-linked sneaker (no stock tracked)",
             "AFFILIATE",
@@ -293,6 +300,7 @@ export const buildProductsCsvExport = async (): Promise<string> => {
                 product.brand_id,
                 product.category,
                 product.sub_category,
+                product.product_style ?? "",
                 product.GST ?? "",
                 product.product_description,
                 product.product_type,
@@ -361,8 +369,8 @@ export const bulkproductrecommedation = async (): Promise<string> => {
         const brandName = brandNameById.get(product.brand_id) ?? "";
         const categoryName = categoryNameById.get(product.category) ?? "";
         const subCategoryName = categoryNameById.get(product.sub_category) ?? "";
-        // No dedicated style attribute exists yet — style mirrors category until one is introduced.
-        const style = categoryName;
+        // Products created before `product_style` existed have none stored; keep the old category-name value for them.
+        const style = product.product_style ?? categoryName;
         const primaryImage = defaultVariant.product_images?.[0] ?? "";
 
         const embeddingText = [

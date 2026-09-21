@@ -93,9 +93,6 @@ const createProduct = async (payload: ProductCreateRequest) => {
       message: "A product must have at least one variant",
     };
   }
-
-  // product_type is optional — when omitted, it's derived from
-  // affiliate_link: a link means AFFILIATE, no link means PHYSICAL.
   const resolvedProductType =
     payload.product_type ?? (payload.affiliate_link ? "AFFILIATE" : "PHYSICAL");
   const isAffiliate = resolvedProductType === "AFFILIATE";
@@ -123,6 +120,7 @@ const createProduct = async (payload: ProductCreateRequest) => {
         category: payload.category,
         sub_category: payload.sub_category,
         GST: payload.GST ?? null,
+        product_style: payload.style,
         product_description: payload.product_description,
         product_type: resolvedProductType,
         gender: payload.gender,
@@ -187,8 +185,10 @@ const createProduct = async (payload: ProductCreateRequest) => {
       });
     }
 
+    const { product_style, ...productFields } = createdProduct.toObject();
     return {
-      ...createdProduct.toObject(),
+      ...productFields,
+      style: product_style,
       variants: createdVariants,
     };
   } catch (error: any) {
@@ -323,6 +323,7 @@ const buildProductPipeline = (
       product_name: 1,
       product_description: 1,
       GST: 1,
+      style: { $ifNull: ["$product_style", null] },
       product_type: 1,
       inventory_managed: 1,
       affiliate_link: 1,
@@ -568,9 +569,12 @@ const updateProduct = async (
     const varientIdError = await validateVarientIds(payload.varient_ids);
     if (varientIdError) return varientIdError;
 
+    // The request field is `style`; the stored path is `product_style`. Passing
+    // `style` through untouched would be silently stripped by strict mode.
+    const { style, ...fields } = payload;
     const product = await productModel.findOneAndUpdate(
       { product_id, is_deleted: { $ne: true } },
-      payload,
+      style === undefined ? fields : { ...fields, product_style: style },
       {
         new: true,
         runValidators: true,

@@ -42,6 +42,7 @@ export interface ApiResponse<T> {
 export interface CategoryListItem {
     category_id: string;
     category_name: string;
+    category_image: string | null;
     parent_category_name: string | null;
     status: "Draft" | "Live" | "Hidden";
     total_product: number;

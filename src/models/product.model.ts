@@ -38,6 +38,11 @@ const ProductSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    product_style: {
+      type: String,
+      enum: ["Topwear", "Bottomwear", "Dresses", "Sets & Co-Ords", "Footwear", "Accessories", "Innerwear"],
+      required: true,
+    },
 
     product_description: {
       type: String,

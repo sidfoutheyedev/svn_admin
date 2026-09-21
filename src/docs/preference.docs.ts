@@ -156,6 +156,12 @@
  *         name: query
  *         schema: { type: string }
  *         description: Case-insensitive substring match against the joined category_name OR any joined brands.brand_name (not against category_id/brand_ids directly).
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Draft, Live, Hidden]
+ *         description: Case-insensitive exact match for the preference status, e.g. Live.
  *     responses:
  *       200:
  *         description: Preferences returned successfully

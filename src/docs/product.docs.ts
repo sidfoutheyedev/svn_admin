@@ -44,12 +44,17 @@
  *           description: If omitted on every variant of a new product, the first variant in the array is made the default automatically.
  *     ProductCreateRequest:
  *       type: object
- *       required: [product_name, brand_id, category, sub_category, product_description, gender, variants]
+ *       required: [product_name, brand_id, category, sub_category, style, product_description, gender, variants]
  *       properties:
  *         product_name: { type: string, example: Mens T-Shirt }
  *         brand_id: { type: string }
  *         category: { type: string, description: A category_id. }
  *         sub_category: { type: string, description: A category_id (of a different category document than `category`). }
+ *         style:
+ *           type: string
+ *           enum: [Topwear, Bottomwear, Dresses, "Sets & Co-Ords", Footwear, Accessories, Innerwear]
+ *           example: Topwear
+ *           description: Required. The product's style bucket — a fixed list, independent of the category tree. Stored on the product as `product_style` but always exposed as `style` in requests and responses.
  *         GST: { type: string, example: 29ABCDE1234F1Z5 }
  *         product_description: { type: string }
  *         gender: { type: string, enum: [male, female, others] }
@@ -88,6 +93,10 @@
  *         brand_id: { type: string }
  *         category: { type: string }
  *         sub_category: { type: string }
+ *         style:
+ *           type: string
+ *           enum: [Topwear, Bottomwear, Dresses, "Sets & Co-Ords", Footwear, Accessories, Innerwear]
+ *           description: Changes the product's style. Products created before this field existed have no style until one is set here.
  *         GST: { type: string }
  *         product_description: { type: string }
  *         gender: { type: string, enum: [male, female, others] }
@@ -176,6 +185,7 @@
  *         brand_id: { type: string }
  *         category: { type: string }
  *         sub_category: { type: string }
+ *         style: { type: string, enum: [Topwear, Bottomwear, Dresses, "Sets & Co-Ords", Footwear, Accessories, Innerwear] }
  *         GST: { type: string, nullable: true }
  *         product_description: { type: string }
  *         product_type: { type: string, enum: [PHYSICAL, AFFILIATE] }
@@ -199,6 +209,11 @@
  *         product_name: { type: string }
  *         product_description: { type: string }
  *         GST: { type: string, nullable: true }
+ *         style:
+ *           type: string
+ *           nullable: true
+ *           enum: [Topwear, Bottomwear, Dresses, "Sets & Co-Ords", Footwear, Accessories, Innerwear, null]
+ *           description: null for products created before the style field existed, until one is set via PATCH /v1/products.
  *         product_type: { type: string, enum: [PHYSICAL, AFFILIATE] }
  *         inventory_managed: { type: boolean }
  *         affiliate_link: { type: string, nullable: true }
@@ -758,7 +773,7 @@
  *     security: [{ bearerAuth: [] }]
  *     responses:
  *       200:
- *         description: A CSV file (products-sample.csv, Content-Disposition attachment). One row per variant; every row sharing the same product_group_id column belongs to the same product and must repeat identical product-level values (product_name, brand_id, category, sub_category, GST, product_description, product_type, affiliate_link, gender, tag, search_tag, varient_ids, status) — a mismatch on any of those between rows of the same group fails that row on import. List-valued columns (tag, search_tag, varient_ids, variant_combination, sku, product_images) are pipe ("|") separated, not comma-separated.
+ *         description: A CSV file (products-sample.csv, Content-Disposition attachment). One row per variant; every row sharing the same product_group_id column belongs to the same product and must repeat identical product-level values (product_name, brand_id, category, sub_category, style, GST, product_description, product_type, affiliate_link, gender, tag, search_tag, varient_ids, status) — a mismatch on any of those between rows of the same group fails that row on import. List-valued columns (tag, search_tag, varient_ids, variant_combination, sku, product_images) are pipe ("|") separated, not comma-separated.
  *         content:
  *           text/csv:
  *             schema: { type: string }
@@ -816,13 +831,14 @@
  *   get:
  *     summary: Export a recommendation/embedding feed as a CSV file — one row per non-deleted product, sourced from that product's is_default variant. Public endpoint, no auth required.
  *     tags: [Products]
+ *     security: []
  *     responses:
  *       200:
  *         description: >
  *           A CSV file (products-recommendation-export.csv, Content-Disposition attachment) with columns
  *           product_id, title, brand, gender, category, subcategory, style, price, in_stock, is_active, primary_image, embedding_text.
  *           One row per product; a product with no is_default variant contributes no row.
- *           brand/category/subcategory are resolved from ids to names. style currently mirrors category (no dedicated style attribute exists yet).
+ *           brand/category/subcategory are resolved from ids to names. style is the product's own style value; products created before that field existed fall back to their category name.
  *           price/in_stock/is_active/primary_image come from the product's is_default variant (primary_image is the first entry of that variant's product_images).
  *           embedding_text is "{title}. {subcategory}, {variant_combination values}, {tags}, {brand}", skipping empty pieces.
  *         content:

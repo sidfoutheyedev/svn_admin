@@ -22,7 +22,6 @@ const categorySchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: null,
-      // Only a top-level category carries an image — sub-categories stay null.
       required: function (this: { parent_id?: string | null }) {
         return !this.parent_id;
       },

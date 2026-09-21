@@ -90,14 +90,25 @@ const updateCategory = async (
       };
     }
 
-    // If category name is being updated, check duplicate
+    // Prepare clean update data
+    const {
+      parent_id,
+      sub_category,
+      sub_category_names,
+      ...updateData
+    } = payload as CategoryUpdateRequest & {
+      sub_category?: Array<{ category_id?: string; category_name?: string }>;
+    };
+
     if (
-      payload.category_name &&
-      payload.category_name.trim() !== category.category_name
+      updateData.category_name &&
+      updateData.category_name.trim() !== category.category_name
     ) {
+      const trimmedName = updateData.category_name.trim();
+
       const duplicate = await CategoryModel.findOne({
         category_id: { $ne: category_id },
-        category_name: payload.category_name.trim(),
+        category_name: trimmedName,
         parent_id: category.parent_id ?? null,
         is_deleted: false,
       });
@@ -109,31 +120,59 @@ const updateCategory = async (
         };
       }
 
-      payload.category_name = payload.category_name.trim();
+      updateData.category_name = trimmedName;
     }
 
-    // Do not allow changing parent_id through this API
-    // unless you specifically want to support moving categories.
-    delete (payload as Partial<CategoryUpdateRequest>).parent_id;
+    if (sub_category_names && !category.parent_id) {
+      const existingSubCategories = await CategoryModel.find({
+        parent_id: category.category_id,
+        is_deleted: false,
+      }).select("category_name");
+
+      const existingNames = new Set(
+        existingSubCategories.map((subCategory) =>
+          subCategory.category_name.toLowerCase(),
+        ),
+      );
+
+      const newSubCategoryNames = [...new Set(
+        sub_category_names
+          .map((name) => name?.trim())
+          .filter((name): name is string => Boolean(name)),
+      )].filter((name) => !existingNames.has(name.toLowerCase()));
+
+      await Promise.all(
+        newSubCategoryNames.map((subCategoryName) =>
+          CategoryModel.create({
+            category_id: randomBytes(6).toString("hex"),
+            category_name: subCategoryName,
+            parent_id: category.category_id,
+            category_image: null,
+            category_description: null,
+            status: category.status,
+          }),
+        ),
+      );
+    }
 
     const updatedCategory = await CategoryModel.findOneAndUpdate(
-      {
-        category_id,
-        is_deleted: false,
-      },
-      payload,
-      {
-        new: true,
-        runValidators: true,
-      },
+      { category_id, is_deleted: false },
+      updateData,
+      { new: true, runValidators: true },
     );
 
-    // Cascade: changing a parent category's status (Draft/Live/Hidden)
-    // should carry the same status down to all of its sub-categories.
-    if (!category.parent_id && payload.status) {
+    if (!updatedCategory) {
+      return {
+        status: CONSTANT.HTTP_STATUS.NOT_FOUND,
+        message: CONSTANT.STATUS.NOT_FOUND,
+      };
+    }
+
+    // Cascade status only for root categories
+    if (!category.parent_id && updateData.status !== undefined) {
       await CategoryModel.updateMany(
         { parent_id: category_id, is_deleted: false },
-        { status: payload.status },
+        { status: updateData.status },
       );
     }
 
@@ -391,6 +430,7 @@ const listCategories = async ({
                 _id: 0,
                 category_id: 1,
                 category_name: 1,
+                category_image: 1,
                 parent_category_name: "$parentCategory.category_name",
                 status: 1,
                 total_product: {
