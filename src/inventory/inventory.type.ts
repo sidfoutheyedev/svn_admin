@@ -49,5 +49,5 @@ export interface InventoryTopSoldProduct {
 
 export interface InventoryListSummary {
     total_stock_count: number;
-    top_sold_product: InventoryTopSoldProduct | null;
+    top_sold_product: InventoryTopSoldProduct[] | [];
 }

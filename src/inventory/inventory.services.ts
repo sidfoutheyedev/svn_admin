@@ -120,7 +120,7 @@ const applyMovement = async (
     ]);
     return movement;
   } catch (error: any) {
-   
+
     await productVariantModel.updateOne(
       { product_variant_id: input.product_variant_id },
       { $inc: { stock_on_hand: -delta } },
@@ -223,7 +223,7 @@ const topSoldProductFor = async (start: Date, end: Date) => {
       },
     },
     { $sort: { quantity: -1 } },
-    { $limit: 1 },
+    { $limit: 3 },
   ]);
 
   return result
@@ -414,7 +414,7 @@ const listInventory = async (
 
     const total_stock_count = totalStockResult[0]?.total ?? 0;
 
-    let top_sold_product: InventoryTopSoldProduct | null = null;
+    const top_sold_product: InventoryTopSoldProduct[] = [];
     if (topSold) {
       const [productDoc, defaultVariant, previousQuantity] =
         await Promise.all([
@@ -438,13 +438,13 @@ const listInventory = async (
           ),
         ]);
 
-      top_sold_product = {
+      top_sold_product.push({
         product_name: productDoc?.product_name ?? "",
         product_image: defaultVariant?.product_images?.[0] ?? null,
         growth_rate: formatGrowth(
           percentChange(topSold.quantity, previousQuantity),
         ),
-      };
+      });
     }
 
     const summary: InventoryListSummary = {
