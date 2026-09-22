@@ -79,6 +79,7 @@ export interface ProductVariantUpdateRequest {
     discount_price?: number;
     product_images?: string[];
     is_default?: boolean;
+    is_active? : boolean;
 }
 
 export interface ProductBulkIdsRequest {

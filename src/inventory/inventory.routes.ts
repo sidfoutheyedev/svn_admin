@@ -6,7 +6,7 @@ const router = Router();
 const { getVariantStock, listInventory, listMovements } = inventoryControllerModule;
 const { requireAuth } = authMiddlewareModule;
 
-router.get("/", requireAuth, listInventory);
+router.get("/", listInventory);
 router.get("/stock", requireAuth, getVariantStock);
 router.get("/movements", requireAuth, listMovements);
 

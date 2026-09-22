@@ -293,6 +293,7 @@ const listInventory = async (
       },
     ];
 
+    // ---- filters (still applied at variant level) ----
     if (filters.query?.trim()) {
       const query = filters.query.trim();
       basePipeline.push({
@@ -323,22 +324,42 @@ const listInventory = async (
       });
     }
 
+    // ---- group by product (collapse all variants) ----
+    const groupByProductStage: PipelineStage = {
+      $group: {
+        _id: "$product.product_id",
+        product_id: { $first: "$product.product_id" },
+        product_name: { $first: "$product.product_name" },
+        category_name: { $first: "$categoryInfo.category_name" },
+        category_id: { $first: "$categoryInfo.category_id" },
+        sub_category_name: { $first: "$subCategoryInfo.category_name" },
+        sub_category_id: { $first: "$subCategoryInfo.category_id" },
+        // sum stock across all variants of this product
+        stock_on_hand: { $sum: "$stock_on_hand" },
+        // keep all variant ids so we can look up sold / revenue later
+        variant_ids: { $addToSet: "$product_variant_id" },
+        // optional: keep one representative variant_combination / image if you need it
+        // variant_combination: { $first: "$variant_combination" },
+        createdAt: { $max: "$createdAt" }, // for sorting
+      },
+    };
+
     const [items, totalResult] = await Promise.all([
       productVariantModel.aggregate([
         ...basePipeline,
-        { $sort: { createdAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
+        groupByProductStage,
+
+        // ---- sold stock (all variants of this product) ----
         {
           $lookup: {
             from: inventoryModel.collection.name,
-            let: { variantId: "$product_variant_id" },
+            let: { variantIds: "$variant_ids" },
             pipeline: [
               {
                 $match: {
                   $expr: {
                     $and: [
-                      { $eq: ["$product_variant_id", "$$variantId"] },
+                      { $in: ["$product_variant_id", "$$variantIds"] },
                       { $eq: ["$type", "OUTBOUND"] },
                       { $eq: ["$reason", "SALE"] },
                     ],
@@ -350,24 +371,32 @@ const listInventory = async (
             as: "soldInfo",
           },
         },
+
+        // ---- revenue (all variants of this product) ----
         {
           $lookup: {
             from: OrderModel.collection.name,
-            let: { variantId: "$product_variant_id" },
+            let: { variantIds: "$variant_ids" },
             pipeline: [
               { $unwind: "$products" },
               {
                 $match: {
                   $expr: {
-                    $eq: ["$products.product_variant_id", "$$variantId"],
+                    $in: ["$products.product_variant_id", "$$variantIds"],
                   },
                 },
               },
-              { $group: { _id: null, total: { $sum: "$products.line_total" } } },
+              {
+                $group: {
+                  _id: null,
+                  total: { $sum: "$products.line_total" },
+                },
+              },
             ],
             as: "revenueInfo",
           },
         },
+
         {
           $addFields: {
             sold_stock: {
@@ -378,29 +407,46 @@ const listInventory = async (
             },
           },
         },
+
+        {
+          $addFields: {
+            total_stock: { $add: ["$stock_on_hand", "$sold_stock"] },
+          },
+        },
+
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+
         {
           $project: {
             _id: 0,
-            product_variant_id: 1,
-            variant_combination: 1,
-            stock_on_hand: 1,
-            category_name: "$categoryInfo.category_name",
-            category_id: "$categoryInfo.category_id",
-            sub_category_name: "$subCategoryInfo.category_name",
-            sub_category_id: "$subCategoryInfo.category_id",
-            total_revenue: 1,
-            sold_stock: 1,
-            total_stock: { $add: ["$stock_on_hand", "$sold_stock"] },
-            product_id: "$product.product_id",
-            product_name: "$product.product_name",
+            product_id: 1,
+            product_name: 1,
+            category_name: 1,
+            category_id: 1,
+            sub_category_name: 1,
+            sub_category_id: 1,
+            stock_on_hand: 1,          // sum of all variants
+            sold_stock: 1,             // sum of all variants
+            total_revenue: 1,          // sum of all variants
+            total_stock: 1,            // stock_on_hand + sold_stock
+            // remove variant_ids from final output if you don't need it
           },
         },
       ]),
-      productVariantModel.aggregate([...basePipeline, { $count: "total" }]),
+
+      // total count of distinct products (not variants)
+      productVariantModel.aggregate([
+        ...basePipeline,
+        groupByProductStage,
+        { $count: "total" },
+      ]),
     ]);
 
     const total = totalResult[0]?.total ?? 0;
 
+    // ---- summary part stays the same ----
     const { currentStart, currentEnd, previousStart, previousEnd } =
       resolveWindows(rangeQuery);
 
@@ -457,7 +503,6 @@ const listInventory = async (
     return toServiceError(error);
   }
 };
-
 export const inventoryService = {
   recordInbound,
   recordOutbound,

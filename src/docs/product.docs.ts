@@ -126,6 +126,7 @@
  *           type: array
  *           items: { type: string }
  *         is_default: { type: boolean }
+ *         is_active: { type: boolean }
  *     ProductBulkIdsRequest:
  *       type: object
  *       required: [ids]
