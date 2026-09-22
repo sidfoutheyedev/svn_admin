@@ -369,14 +369,14 @@ export const bulkproductrecommedation = async (): Promise<string> => {
         const brandName = brandNameById.get(product.brand_id) ?? "";
         const categoryName = categoryNameById.get(product.category) ?? "";
         const subCategoryName = categoryNameById.get(product.sub_category) ?? "";
-        // Products created before `product_style` existed have none stored; keep the old category-name value for them.
         const style = product.product_style ?? categoryName;
         const primaryImage = defaultVariant.product_images?.[0] ?? "";
 
         const embeddingText = [
             product.product_name,
-            [subCategoryName, ...(defaultVariant.variant_combination ?? []), ...(product.tag ?? []), brandName]
+            [subCategoryName, ...(product.tag ?? []), brandName]
                 .filter(Boolean)
+                .filter((word) => word.toLowerCase() !== "svn")
                 .join(", "),
         ]
             .filter(Boolean)
