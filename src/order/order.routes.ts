@@ -19,7 +19,7 @@ const { orderCreateSchema, orderBulkIdsSchema, orderBulkStatusSchema } = orderSc
 
 router.post("/", requireAuth, validateBody(orderCreateSchema), createOrder);
 router.get("/", requireAuth, getAllOrders);
-router.get("/details", requireAuth, readOrder);
+router.get("/details", readOrder);
 router.patch("/status", requireAuth, validateBody(orderBulkStatusSchema), updateOrdersStatus);
 router.post("/soft-delete", requireAuth, validateBody(orderBulkIdsSchema), deleteOrder);
 router.post("/hard-delete", requireAuth, validateBody(orderBulkIdsSchema), hardDeleteOrders);

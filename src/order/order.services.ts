@@ -14,6 +14,8 @@ import { UserModel } from "../models/user.model";
 import { inventoryService, InventoryError } from "../inventory/inventory.services";
 import { paymentService } from "../payment/payment.services";
 import type { OrderCreateRequest, OrderLineItemData, OrderListSummary, OrderStatus, PaymentSummary } from "./order.type";
+import { CategoryModel } from "../models/category.model";
+import { BrandModel } from "../models/brand.model";
 
 const generateId = () => randomBytes(6).toString("hex");
 const generateOrderNumber = () => `ORD-${randomBytes(4).toString("hex").toUpperCase()}`;
@@ -199,17 +201,147 @@ const createOrder = async (payload: OrderCreateRequest) => {
 
 const readOrder = async (order_id: string) => {
   try {
-    const order = await OrderModel.findOne({ order_id, is_deleted: false }).lean();
-    if (!order) {
-      return { status: CONSTANT.HTTP_STATUS.NOT_FOUND, message: CONSTANT.STATUS.NOT_FOUND };
+    const [result] = await OrderModel.aggregate([
+      {
+        $match: {
+          order_id,
+          is_deleted: false,
+        },
+      },
+      {
+        $lookup: {
+          from: productModel.collection.name,
+          localField: "products.product_id",
+          foreignField: "product_id",
+          as: "productDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: CategoryModel.collection.name,
+          localField: "productDetails.category",
+          foreignField: "category_id",
+          as: "categoryDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: CategoryModel.collection.name,
+          localField: "productDetails.sub_category",
+          foreignField: "category_id",
+          as: "subCategoryDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: BrandModel.collection.name,
+          localField: "productDetails.brand_id",
+          foreignField: "brand_id",
+          as: "brandDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: AddressModel.collection.name,
+          localField: "address_id",
+          foreignField: "address_id",
+          as: "addressDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: UserProfileModel.collection.name,
+          localField: "user_id",
+          foreignField: "user_id",
+          as: "customerDetails",
+        },
+      },
+      {
+        $lookup: {
+          from: PaymentModel.collection.name,
+          localField: "payment_id",
+          foreignField: "payment_id",
+          as: "paymentDetails",
+        },
+      },
+      {
+        $addFields: {
+          category: {
+            $let: {
+              vars: { category: { $arrayElemAt: ["$categoryDetails", 0] } },
+              in: {
+                category_id: "$$category.category_id",
+                category_name: "$$category.category_name",
+              },
+            },
+          },
+          sub_category: {
+            $let: {
+              vars: { subCategory: { $arrayElemAt: ["$subCategoryDetails", 0] } },
+              in: {
+                sub_category_id: "$$subCategory.category_id",
+                sub_category_name: "$$subCategory.category_name",
+              },
+            },
+          },
+          brand: {
+            $let: {
+              vars: { brand: { $arrayElemAt: ["$brandDetails", 0] } },
+              in: {
+                brand_id: "$$brand.brand_id",
+                brand_name: "$$brand.brand_name",
+              },
+            },
+          },
+          customer_name: {
+            $ifNull: [{ $arrayElemAt: ["$customerDetails.full_name", 0] }, null],
+          },
+          address: {
+            $ifNull: [{ $arrayElemAt: ["$addressDetails", 0] }, null],
+          },
+          payment: {
+            $cond: {
+              if: { $gt: [{ $size: "$paymentDetails" }, 0] },
+              then: {
+                payment_id: { $arrayElemAt: ["$paymentDetails.payment_id", 0] },
+                order_id: { $arrayElemAt: ["$paymentDetails.order_id", 0] },
+                transaction_id: {
+                  $ifNull: [{ $arrayElemAt: ["$paymentDetails.transaction_id", 0] }, null],
+                },
+                payment_mode: { $arrayElemAt: ["$paymentDetails.payment_mode", 0] },
+                amount: { $arrayElemAt: ["$paymentDetails.amount", 0] },
+                status: { $arrayElemAt: ["$paymentDetails.status", 0] },
+              },
+              else: null,
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          productDetails: 0,
+          categoryDetails: 0,
+          subCategoryDetails: 0,
+          brandDetails: 0,
+          addressDetails: 0,
+          customerDetails: 0,
+          paymentDetails: 0,
+        },
+      },
+    ]);
+
+    if (!result) {
+      return {
+        status: CONSTANT.HTTP_STATUS.NOT_FOUND,
+        message: CONSTANT.STATUS.NOT_FOUND,
+      };
     }
-    const payment = order.payment_id ? await PaymentModel.findOne({ payment_id: order.payment_id }).lean() : null;
-    return { ...order, payment: toPaymentSummary(payment) };
+
+    return result;
   } catch (error) {
     return toServiceError(error);
   }
 };
-
 const listOrders = async ({
   page,
   limit,
