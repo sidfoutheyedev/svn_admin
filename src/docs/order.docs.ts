@@ -88,6 +88,53 @@
  *         status: { type: string, enum: [PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED, RETURNED] }
  *         payment_id: { type: string, nullable: true }
  *         payment: { $ref: '#/components/schemas/OrderPaymentSummary' }
+ *         category: { $ref: '#/components/schemas/OrderCategorySummary' }
+ *         sub_category: { $ref: '#/components/schemas/OrderSubCategorySummary' }
+ *         brand: { $ref: '#/components/schemas/OrderBrandSummary' }
+ *         customer_name: { type: string, nullable: true, description: Resolved from the user's profile; null if no profile matched. }
+ *         address: { $ref: '#/components/schemas/OrderAddress' }
+ *         is_deleted: { type: boolean }
+ *         createdAt: { type: string, format: date-time }
+ *         updatedAt: { type: string, format: date-time }
+ *     OrderCategorySummary:
+ *       type: object
+ *       nullable: true
+ *       description: Category resolved from the ordered product; null if no matching category exists.
+ *       properties:
+ *         category_id: { type: string }
+ *         category_name: { type: string }
+ *     OrderSubCategorySummary:
+ *       type: object
+ *       nullable: true
+ *       description: Sub-category resolved from the ordered product; null if no matching category exists.
+ *       properties:
+ *         sub_category_id: { type: string }
+ *         sub_category_name: { type: string }
+ *     OrderBrandSummary:
+ *       type: object
+ *       nullable: true
+ *       description: Brand resolved from the ordered product; null if no matching brand exists.
+ *       properties:
+ *         brand_id: { type: string }
+ *         brand_name: { type: string }
+ *     OrderAddress:
+ *       type: object
+ *       nullable: true
+ *       description: Full saved address resolved from address_id; null if no matching address exists.
+ *       properties:
+ *         address_id: { type: string }
+ *         user_id: { type: string }
+ *         label: { type: string, nullable: true }
+ *         full_name: { type: string }
+ *         phone: { type: string }
+ *         addressLine1: { type: string }
+ *         addressLine2: { type: string, nullable: true }
+ *         landmark: { type: string, nullable: true }
+ *         city: { type: string }
+ *         state: { type: string }
+ *         country: { type: string }
+ *         pincode: { type: string }
+ *         is_default: { type: boolean }
  *         is_deleted: { type: boolean }
  *         createdAt: { type: string, format: date-time }
  *         updatedAt: { type: string, format: date-time }
