@@ -4,7 +4,7 @@ export const preferenceSchema = z.object({
   preference_id: z.string().min(1),
   category_id: z.string().min(1),
   brand_ids: z.array(z.string()),
-  priority: z.number().int().min(1).max(10),
+  priority: z.number().int().min(1),
   status: z.enum(["Draft", "Live", "Hidden"]).optional(),
   is_deleted: z.boolean().optional(),
 });
