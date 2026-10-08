@@ -198,7 +198,7 @@ const createPreferences = async (data: preferencesCreateRequest) => {
     }
 
     const newPreferences = await PreferencesModel.create({
-      preference_id: randomBytes(16).toString("hex"),
+      preference_id: randomBytes(6).toString("hex"),
       category_id: data.category_id,
       brand_ids: data.brand_ids,
       priority: data.priority,
